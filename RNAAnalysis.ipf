@@ -62,7 +62,7 @@ Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 		RNAAnalysisDF="root:RNAPulling:Analysis:"
 	EndIf
 	If(ParamIsDefault(RampDF))
-		RampDF="root:RNAPulling:Analysis:RampAnalysis"
+		RampDF="root:RNAPulling:Analysis:RampAnalysis:"
 	EndIf
 	
 	If(LoadWaves)
@@ -70,6 +70,20 @@ Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 	EndIf
 	
 	// Initial guesses on ramp analysis for this master index
+	// Get Wave Paths
+	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
+	String UnfoldSettingsName=RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
+	String RefoldSettingsName=RampDF+"RefoldSettingsName_"+num2str(MasterIndex)
+	Duplicate/O UnfoldRFFitSettings,$UnfoldSettingsName,$RefoldSettingsName
+	Wave UnfoldSettings=$UnfoldSettingsName
+	Wave RefoldSettings=$RefoldSettingsName
+	// How many ramps for this master index
+	Wave Settings=$RNAAnalysisDF+"Settings"
+	Wave/T SettingsStr=$RNAAnalysisDF+"SettingsStr"
+ 	Variable NumRamps=NumStepsOrRamps(Settings,SettingsStr)
+	// Resize the settings wave for the master index with the number of ramps
+	Redimension/N=(-1,NumRamps) UnfoldSettings 	
+	Redimension/N=(-1,NumRamps) RefoldSettings 	
 	
 	// Do first pass at rupture force analysis for unfolding and refolding
 	
