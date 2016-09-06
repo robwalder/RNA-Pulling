@@ -89,6 +89,46 @@ Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 	
 End
 
+// Guess RF fit settings for all ramps of a given master index
+Function GuessRFFitSettingsMI(MasterIndex,[UnfoldStartFraction,UnfoldEndFraction,RefoldStartFraction,RefoldEndFraction,RampDF,RNAAnalysisDF])
+	Variable MasterIndex,UnfoldStartFraction,UnfoldEndFraction,RefoldStartFraction,RefoldEndFraction
+	String RNAAnalysisDF,RampDF
+	
+	If(ParamIsDefault(RNAAnalysisDF))
+		RNAAnalysisDF="root:RNAPulling:Analysis:"
+	EndIf
+	If(ParamIsDefault(RampDF))
+		RampDF="root:RNAPulling:Analysis:RampAnalysis:"
+	EndIf
+	If(ParamIsDefault(UnfoldStartFraction))
+		UnfoldStartFraction=0.25
+	EndIf
+	If(ParamIsDefault(UnfoldEndFraction))
+		UnfoldEndFraction=0.25
+	EndIf
+	If(ParamIsDefault(RefoldStartFraction))
+		RefoldStartFraction=0.25
+	EndIf
+	If(ParamIsDefault(RefoldEndFraction))
+		RefoldEndFraction=0.25
+	EndIf
+	
+	Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
+	Wave RefoldSettings=$RampDF+"RefoldSettingsName_"+num2str(MasterIndex)
+	
+	Variable NumRamps=DimSize(UnfoldSettings,1)
+	Variable RampIndex=0
+	LoadRorS(MasterIndex,RampIndex)
+	Wave ForceWave=$RNAAnalysisDF+"RorSForce"
+	Wave ForceWave_smth=$RNAAnalysisDF+"RorSForce_smth"
+	Wave RNAPullingSettings=$RNAAnalysisDF+"Settings"
+	For(RampIndex=0;RampIndex<NumRamps;RampIndex+=1)
+		LoadRorS(MasterIndex,RampIndex)
+		GuessRFFitSettings(UnfoldSettings,RefoldSettings,ForceWave,ForceWave_smth,RNAPullingSettings,UnfoldStartFraction=UnfoldStartFraction,UnfoldEndFraction=UnfoldEndFraction,RefoldStartFraction=RefoldStartFraction,RefoldEndFraction=RefoldEndFraction)
+	EndFor
+	
+End
+
 // Guess RF Fit Settings for a single, individual ramp.
 Function GuessRFFitSettings(UnfoldSettings,RefoldSettings,ForceWave,ForceWave_smth,RNAPullingSettings,[UnfoldStartFraction,UnfoldEndFraction,RefoldStartFraction,RefoldEndFraction])
 	Wave UnfoldSettings,RefoldSettings,ForceWave,ForceWave_smth,RNAPullingSettings
