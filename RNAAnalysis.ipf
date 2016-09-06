@@ -89,6 +89,68 @@ Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 	
 End
 
+// Guess RF Fit Settings for a single, individual ramp.
+Function GuessRFFitSettings(UnfoldSettings,RefoldSettings,ForceWave,ForceWave_smth,RNAPullingSettings,[UnfoldStartFraction,UnfoldEndFraction,RefoldStartFraction,RefoldEndFraction])
+	Wave UnfoldSettings,RefoldSettings,ForceWave,ForceWave_smth,RNAPullingSettings
+	Variable UnfoldStartFraction,UnfoldEndFraction,RefoldStartFraction,RefoldEndFraction
+	String RFName
+	If(ParamIsDefault(UnfoldStartFraction))
+		UnfoldStartFraction=0.25
+	EndIf
+	If(ParamIsDefault(UnfoldEndFraction))
+		UnfoldEndFraction=0.25
+	EndIf
+	If(ParamIsDefault(RefoldStartFraction))
+		RefoldStartFraction=0.25
+	EndIf
+	If(ParamIsDefault(RefoldEndFraction))
+		RefoldEndFraction=0.25
+	EndIf
+	
+	// Determine start and stop to all time intervals for analysis
+	Variable NumPts=DimSize(ForceWave,0)
+	Variable StartTime=pnt2x(ForceWave,0)
+	Variable EndTime=pnt2x(ForceWave,NumPts)-RNAPullingSettings[%DwellTime]
+	Variable FractionInUnfold=0.5  // This only works for equal velocities.  Might need to fix later for different unfold/refold ramp speeds. 
+	Variable TurnAroundTime=FractionInUnfold*(EndTime-StartTime)+StartTime
+	Variable UnfoldTime=TurnAroundTime-StartTime
+	Variable RefoldTime=EndTime-TurnAroundTime
+	Variable EndUnfoldFit1=StartTime+UnfoldStartFraction*UnfoldTime
+	Variable StartUnfoldFit2=TurnAroundTime-UnfoldEndFraction*UnfoldTime
+	Variable EndRefoldFit1=TurnAroundTime+RefoldStartFraction*RefoldTime
+	Variable StartRefoldFit2=EndTime-RefoldEndFraction*RefoldTime
+	
+	// Fit a line to the 4 main segments associated with unfolded and refolded states
+	Wave LRFitUnfold1=LR(ForceWave_smth,StartTime,UnfoldStartFraction*UnfoldTime,LRFitName="LRFitUnfold1")
+	Wave LRFitUnfold2=LR(ForceWave_smth,StartUnfoldFit2,UnfoldEndFraction*UnfoldTime,LRFitName="LRFitUnfold2")
+	Wave LRFitRefold1=LR(ForceWave_smth,TurnAroundTime,RefoldStartFraction*RefoldTime,LRFitName="LRFitRefold1")
+	Wave LRFitRefold2=LR(ForceWave_smth,StartRefoldFit2,RefoldEndFraction*RefoldTime,LRFitName="LRFitRefold2")
+	
+	// Set Unfold Fit Settings
+	UnfoldSettings[%RampStartTime]=StartTime
+	UnfoldSettings[%RampEndTime]=TurnAroundTime
+	UnfoldSettings[%Fit1StartTime]=StartTime
+	UnfoldSettings[%Fit1EndTime]=EndUnfoldFit1
+	UnfoldSettings[%Fit2StartTime]=StartUnfoldFit2
+	UnfoldSettings[%Fit2EndTime]=TurnAroundTime
+	UnfoldSettings[%Fit1LR]=LRFitUnfold1[%LoadingRate]
+	UnfoldSettings[%Fit1YIntercept]=LRFitUnfold1[%YIntercept]
+	UnfoldSettings[%Fit2LR]=LRFitUnfold2[%LoadingRate]
+	UnfoldSettings[%Fit2YIntercept]=LRFitUnfold2[%YIntercept]
+	// Set Refold Fit Settings
+	RefoldSettings[%RampStartTime]=TurnAroundTime
+	RefoldSettings[%RampEndTime]=EndTime
+	RefoldSettings[%Fit1StartTime]=TurnAroundTime
+	RefoldSettings[%Fit1EndTime]=EndRefoldFit1
+	RefoldSettings[%Fit2StartTime]=StartRefoldFit2
+	RefoldSettings[%Fit2EndTime]=EndTime
+	RefoldSettings[%Fit1LR]=LRFitRefold1[%LoadingRate]
+	RefoldSettings[%Fit1YIntercept]=LRFitRefold1[%YIntercept]
+	RefoldSettings[%Fit2LR]=LRFitRefold2[%LoadingRate]
+	RefoldSettings[%Fit2YIntercept]=LRFitRefold2[%YIntercept]
+	
+End
+
 Function RFbyPullingSpeed([TargetDF])
 	String TargetDF
 	If(ParamIsDefault(TargetDF))
