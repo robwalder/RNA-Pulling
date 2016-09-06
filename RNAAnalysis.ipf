@@ -86,6 +86,9 @@ Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 	Redimension/N=(-1,NumRamps) RefoldSettings 	
 	
 	// Do first pass at rupture force analysis for unfolding and refolding
+	// Guess the RF fits settings for all ramps in this master index
+	GuessRFFitSettingsMI(MasterIndex)
+	// Estimate RF for all unfold and refold events in this master index
 	
 End
 
