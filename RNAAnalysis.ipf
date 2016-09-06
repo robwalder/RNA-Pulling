@@ -5,32 +5,42 @@
 
 
 Function InitRNAAnalysis()
+	// Make new data folders 
 	NewDataFolder/O root:RNAPulling:Analysis
+	NewDataFolder/O root:RNAPulling:Analysis:RampAnalysis
+	
+	// Load waves for first time RNA Pulling program ran
 	LoadAllWavesForIndex(0)
 	
-	Make/O/N=13 root:RNAPulling:Analysis:AnalysisSettings
+	// Set RNAAnalysis Parms Path
+	String PathIn=FunctionPath("")
+	NewPath/Q/O RNAAnalysisParms ParseFilePath(1, PathIn, ":", 1, 0) +"Parms"
+	
+	// Load Settings Wave
+	SetDataFolder root:RNAPulling:Analysis
+	LoadWave/H/Q/O/P=RNAAnalysisParms "AnalysisSettings.ibw"	
+	SetDataFolder root:RNAPulling:Analysis:RampAnalysis
+	LoadWave/H/Q/O/P=RNAAnalysisParms "RampFitSettings.ibw"	
+
+	// Adjust Analysis Settings Wave
 	Wave AnalysisSettings=root:RNAPulling:Analysis:AnalysisSettings
-	SetDimLabel 0,0, MasterIndex, AnalysisSettings
- 	SetDimLabel 0,1, SubIndex, AnalysisSettings
- 	SetDimLabel 0,2, NumSteps, AnalysisSettings
- 	SetDimLabel 0,3, NumRNAPulls, AnalysisSettings
- 	SetDimLabel 0,4, BoxCarAverage, AnalysisSettings
- 	SetDimLabel 0,5, Decimation, AnalysisSettings
 	AnalysisSettings=1
 	Wave LastRNAPullSettings=root:RNAPulling:RNAPullingSettings
 	AnalysisSettings[%NumRNAPulls]=LastRNAPullSettings[%Iteration]
 	
+	// Make filtering settings wave
 	Make/O/N=(AnalysisSettings[%NumRNAPulls],2) root:RNAPulling:Analysis:RSFilterSettings
 	Wave RSFilterSettings=root:RNAPulling:Analysis:RSFilterSettings
 	RSFilterSettings=1
-	
 	SetDimLabel 1,0, BoxCarNum, RSFilterSettings
  	SetDimLabel 1,1, Decimation, RSFilterSettings
 	
+	// Determine the number of times the rna pulling program ran
 	Wave Settings=root:RNAPulling:Analysis:Settings
 	Wave/T SettingsStr=root:RNAPulling:Analysis:SettingsStr
  	AnalysisSettings[%NumSteps]=NumStepsOrRamps(Settings,SettingsStr)
 	
+	// Load the first ramp/step on the for the first time the RNA pulling program ran
 	LoadRorS(0,0)
 
 End
@@ -128,7 +138,6 @@ Function RFMultipleRamps(RNAMasterIndex,[TargetDF,LoadWaves])
 		
 	EndFor
 End
-	
 
 Function/Wave DetermineRuptureForce(ForceWave,ForceWave_smth,RNAPullingSettings,[LRStartFraction,LREndFraction,LRFitName,RFStatsName,RFName])
 	Wave ForceWave,ForceWave_smth,RNAPullingSettings
