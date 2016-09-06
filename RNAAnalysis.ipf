@@ -42,7 +42,37 @@ Function InitRNAAnalysis()
 	
 	// Load the first ramp/step on the for the first time the RNA pulling program ran
 	LoadRorS(0,0)
+	
+	// Make Unfold and Refold Ramp Settings Waves
+	Wave RampFitSettings=root:RNAPulling:Analysis:RampAnalysis:RampFitSettings
+	SetDataFolder root:RNAPulling:Analysis:RampAnalysis
+	Duplicate/O RampFitSettings, UnfoldRFFitSettings, RefoldRFFitSettings
 
+End
+
+// Init a rupture force analysis for a given master index
+Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
+	Variable MasterIndex,LoadWaves
+	String RNAAnalysisDF,RampDF
+	
+	If(ParamIsDefault(LoadWaves))
+		LoadWaves=0
+	EndIf
+	If(ParamIsDefault(RNAAnalysisDF))
+		RNAAnalysisDF="root:RNAPulling:Analysis:"
+	EndIf
+	If(ParamIsDefault(RampDF))
+		RampDF="root:RNAPulling:Analysis:RampAnalysis"
+	EndIf
+	
+	If(LoadWaves)
+		LoadAllWavesForIndex(MasterIndex)
+	EndIf
+	
+	// Initial guesses on ramp analysis for this master index
+	
+	// Do first pass at rupture force analysis for unfolding and refolding
+	
 End
 
 Function RFbyPullingSpeed([TargetDF])
