@@ -93,9 +93,9 @@ Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 End
 
 // Show the ramp analysis for a given ramp
-Function DisplayRampAnalysis(MasterIndex,RampIndex,[LoadWaves,RNAAnalysisDF,RampDF])
+Function DisplayRampAnalysis(MasterIndex,RampIndex,[LoadWaves,RNAAnalysisDF,RampDF,LoadFitSettings])
 
-	Variable MasterIndex,RampIndex,LoadWaves
+	Variable MasterIndex,RampIndex,LoadWaves,LoadFitSettings
 	String RNAAnalysisDF,RampDF
 	
 	If(ParamIsDefault(LoadWaves))
@@ -107,6 +107,9 @@ Function DisplayRampAnalysis(MasterIndex,RampIndex,[LoadWaves,RNAAnalysisDF,Ramp
 	If(ParamIsDefault(RampDF))
 		RampDF="root:RNAPulling:Analysis:RampAnalysis:"
 	EndIf
+	If(ParamIsDefault(LoadFitSettings))
+		LoadFitSettings=1
+	EndIf
 	If(LoadWaves)
 		LoadAllWavesForIndex(MasterIndex)
 	 	LoadRorS(MasterIndex,RampIndex)
@@ -116,9 +119,64 @@ Function DisplayRampAnalysis(MasterIndex,RampIndex,[LoadWaves,RNAAnalysisDF,Ramp
 	Wave RefoldSettings=$RampDF+"RefoldRFFitSettings_"+num2str(MasterIndex)
 	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
 	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
-	Wave ForceWave_smth=$RNAAnalysisDF+"ForceRorS_Smth"
+	Wave ForceRorS=$RNAAnalysisDF+"ForceRorS"
+	Wave ForceRorS_Smth=$RNAAnalysisDF+"ForceRorS_Smth"
+	If(LoadFitSettings)
+		UnfoldRFFitSettings=UnfoldSettings[p][RampIndex] 
+		RefoldRFFitSettings=RefoldSettings[p][RampIndex] 
+	 	
+	EndIf
 	
+	Duplicate/O/R=(UnfoldRFFitSettings[%Fit1StartTime],UnfoldRFFitSettings[%Fit2EndTime]) ForceRorS_Smth $RampDF+"UnfoldFit1"
+	Duplicate/O/R=(UnfoldRFFitSettings[%Fit1StartTime],UnfoldRFFitSettings[%Fit2EndTime]) ForceRorS_Smth $RampDF+"UnfoldFit2"
+	Duplicate/O/R=(RefoldRFFitSettings[%Fit1StartTime],RefoldRFFitSettings[%Fit2EndTime]) ForceRorS_Smth $RampDF+"RefoldFit1"
+	Duplicate/O/R=(RefoldRFFitSettings[%Fit1StartTime],RefoldRFFitSettings[%Fit2EndTime]) ForceRorS_Smth $RampDF+"RefoldFit2"
+	Wave UnfoldFit1=$RampDF+"UnfoldFit1"
+	Wave UnfoldFit2=$RampDF+"UnfoldFit2"
+	Wave RefoldFit1=$RampDF+"RefoldFit1"
+	Wave RefoldFit2=$RampDF+"RefoldFit2"
+	UnfoldFit1=UnfoldRFFitSettings[%Fit1LR]*x+UnfoldRFFitSettings[%Fit1YIntercept]
+	UnfoldFit2=UnfoldRFFitSettings[%Fit2LR]*x+UnfoldRFFitSettings[%Fit2YIntercept]
+	RefoldFit1=RefoldRFFitSettings[%Fit1LR]*x+RefoldRFFitSettings[%Fit1YIntercept]
+	RefoldFit2=RefoldRFFitSettings[%Fit2LR]*x+RefoldRFFitSettings[%Fit2YIntercept]
+	WaveStats/Q ForceRorS
+	Variable MaxForce=V_max
+	Variable MinForce=V_min
 	
+	SetDataFolder $RampDF
+	Make/O/N=2 UnfoldFit1Start,UnfoldFit1End,UnfoldFit2Start,UnfoldFit2End,RefoldFit1Start,RefoldFit1End,RefoldFit2Start,RefoldFit2End,ForceMinMax
+	ForceMinMax={MaxForce,MinForce}
+	UnfoldFit1Start=UnfoldRFFitSettings[%Fit1StartTime]
+	UnfoldFit1End=UnfoldRFFitSettings[%Fit1EndTime]
+	UnfoldFit2Start=UnfoldRFFitSettings[%Fit2StartTime]
+	UnfoldFit2End=UnfoldRFFitSettings[%Fit2EndTime]
+	RefoldFit1Start=RefoldRFFitSettings[%Fit1StartTime]
+	RefoldFit1End=RefoldRFFitSettings[%Fit1EndTime]
+	RefoldFit2Start=RefoldRFFitSettings[%Fit2StartTime]
+	RefoldFit2End=RefoldRFFitSettings[%Fit2EndTime]
+	
+	DoWindow/F RNARampAnalysis
+	If(V_flag==0)
+		Display/K=1/N=RNARampAnalysis ForceRorS
+		AppendToGraph/C=(0,15872,65280)  ForceRorS_smth
+		ModifyGraph rgb(ForceRorS)=(48896,59904,65280)
+		AppendToGraph/C=(0,0,0)  UnfoldFit1
+		AppendToGraph/C=(0,0,0)  UnfoldFit2
+		AppendToGraph/C=(0,0,0)  RefoldFit1
+		AppendToGraph/C=(0,0,0)  RefoldFit2
+		AppendToGraph/C=(0,0,0)  ForceMinMax vs UnfoldFit1Start
+		AppendToGraph/C=(0,0,0)  ForceMinMax vs UnfoldFit1End
+		AppendToGraph/C=(0,0,0)  ForceMinMax vs UnfoldFit2Start
+		AppendToGraph/C=(0,0,0)  ForceMinMax vs UnfoldFit2End
+		AppendToGraph/C=(0,0,0)  ForceMinMax vs RefoldFit1Start
+		AppendToGraph/C=(0,0,0)  ForceMinMax vs RefoldFit1End
+		AppendToGraph/C=(0,0,0)  ForceMinMax vs RefoldFit2Start
+		AppendToGraph/C=(0,0,0)  ForceMinMax vs RefoldFit2End
+
+		Label left "Force (pN)"
+		ModifyGraph tickUnit=1
+	EndIf
+
 End
 
 Function MeasureRFByMI(MasterIndex,Method,[LoadWaves,RNAAnalysisDF,RampDF])
@@ -243,16 +301,16 @@ Function GuessRFFitSettingsMI(MasterIndex,[UnfoldStartFraction,UnfoldEndFraction
 		RampDF="root:RNAPulling:Analysis:RampAnalysis:"
 	EndIf
 	If(ParamIsDefault(UnfoldStartFraction))
-		UnfoldStartFraction=0.35
+		UnfoldStartFraction=0.5
 	EndIf
 	If(ParamIsDefault(UnfoldEndFraction))
-		UnfoldEndFraction=0.1
+		UnfoldEndFraction=0.2
 	EndIf
 	If(ParamIsDefault(RefoldStartFraction))
-		RefoldStartFraction=0.1
+		RefoldStartFraction=0.2
 	EndIf
 	If(ParamIsDefault(RefoldEndFraction))
-		RefoldEndFraction=0.25
+		RefoldEndFraction=0.5
 	EndIf
 	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
 	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
@@ -285,16 +343,16 @@ Function GuessRFFitSettings(UnfoldSettings,RefoldSettings,ForceWave,ForceWave_sm
 	Variable UnfoldStartFraction,UnfoldEndFraction,RefoldStartFraction,RefoldEndFraction
 	String RFName
 	If(ParamIsDefault(UnfoldStartFraction))
-		UnfoldStartFraction=0.25
+		UnfoldStartFraction=0.5
 	EndIf
 	If(ParamIsDefault(UnfoldEndFraction))
-		UnfoldEndFraction=0.25
+		UnfoldEndFraction=0.2
 	EndIf
 	If(ParamIsDefault(RefoldStartFraction))
 		RefoldStartFraction=0.25
 	EndIf
 	If(ParamIsDefault(RefoldEndFraction))
-		RefoldEndFraction=0.25
+		RefoldEndFraction=0.5
 	EndIf
 	
 	// Determine start and stop to all time intervals for analysis
@@ -311,10 +369,10 @@ Function GuessRFFitSettings(UnfoldSettings,RefoldSettings,ForceWave,ForceWave_sm
 	Variable StartRefoldFit2=EndTime-RefoldEndFraction*RefoldTime
 	
 	// Fit a line to the 4 main segments associated with unfolded and refolded states
-	Wave LRFitUnfold1=LR(ForceWave_smth,StartTime,UnfoldStartFraction*UnfoldTime,LRFitName="LRFitUnfold1")
-	Wave LRFitUnfold2=LR(ForceWave_smth,StartUnfoldFit2,UnfoldEndFraction*UnfoldTime,LRFitName="LRFitUnfold2")
-	Wave LRFitRefold1=LR(ForceWave_smth,TurnAroundTime,RefoldStartFraction*RefoldTime,LRFitName="LRFitRefold1")
-	Wave LRFitRefold2=LR(ForceWave_smth,StartRefoldFit2,RefoldEndFraction*RefoldTime,LRFitName="LRFitRefold2")
+	Wave LRFitUnfold1=LR(ForceWave,StartTime,EndUnfoldFit1,LRFitName="LRFitUnfold1",SpecifyEndTime=1)
+	Wave LRFitUnfold2=LR(ForceWave,StartUnfoldFit2,TurnAroundTime,LRFitName="LRFitUnfold2",SpecifyEndTime=1)
+	Wave LRFitRefold1=LR(ForceWave,TurnAroundTime,EndRefoldFit1,LRFitName="LRFitRefold1",SpecifyEndTime=1)
+	Wave LRFitRefold2=LR(ForceWave,StartRefoldFit2,EndTime,LRFitName="LRFitRefold2",SpecifyEndTime=1)
 	
 	// Set Unfold Fit Settings
 	UnfoldSettings[%RampStartTime]=StartTime
