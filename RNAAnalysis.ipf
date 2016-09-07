@@ -115,7 +115,9 @@ Function GuessRFFitSettingsMI(MasterIndex,[UnfoldStartFraction,UnfoldEndFraction
 	If(ParamIsDefault(RefoldEndFraction))
 		RefoldEndFraction=0.25
 	EndIf
-	
+	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
+	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
+
 	Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
 	Wave RefoldSettings=$RampDF+"RefoldSettingsName_"+num2str(MasterIndex)
 	
@@ -127,7 +129,9 @@ Function GuessRFFitSettingsMI(MasterIndex,[UnfoldStartFraction,UnfoldEndFraction
 	Wave RNAPullingSettings=$RNAAnalysisDF+"Settings"
 	For(RampIndex=0;RampIndex<NumRamps;RampIndex+=1)
 		LoadRorS(MasterIndex,RampIndex)
-		GuessRFFitSettings(UnfoldSettings,RefoldSettings,ForceWave,ForceWave_smth,RNAPullingSettings,UnfoldStartFraction=UnfoldStartFraction,UnfoldEndFraction=UnfoldEndFraction,RefoldStartFraction=RefoldStartFraction,RefoldEndFraction=RefoldEndFraction)
+		GuessRFFitSettings(UnfoldRFFitSettings,RefoldRFFitSettings,ForceWave,ForceWave_smth,RNAPullingSettings,UnfoldStartFraction=UnfoldStartFraction,UnfoldEndFraction=UnfoldEndFraction,RefoldStartFraction=RefoldStartFraction,RefoldEndFraction=RefoldEndFraction)
+		UnfoldSettings[p][RampIndex]=UnfoldRFFitSettings[p]
+		RefoldSettings[p][RampIndex]=RefoldRFFitSettings[p]
 	EndFor
 	
 End
