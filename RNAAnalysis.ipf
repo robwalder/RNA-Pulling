@@ -144,7 +144,7 @@ Function DisplayRampAnalysis(MasterIndex,RampIndex,[LoadWaves,RNAAnalysisDF,Ramp
 	Variable MinForce=V_min
 	
 	SetDataFolder $RampDF
-	Make/O/N=2 UnfoldFit1Start,UnfoldFit1End,UnfoldFit2Start,UnfoldFit2End,RefoldFit1Start,RefoldFit1End,RefoldFit2Start,RefoldFit2End,ForceMinMax
+	Make/O/N=2 UnfoldFit1Start,UnfoldFit1End,UnfoldFit2Start,UnfoldFit2End,RefoldFit1Start,RefoldFit1End,RefoldFit2Start,RefoldFit2End,ForceMinMax,RF,RFTime
 	ForceMinMax={MaxForce,MinForce}
 	UnfoldFit1Start=UnfoldRFFitSettings[%Fit1StartTime]
 	UnfoldFit1End=UnfoldRFFitSettings[%Fit1EndTime]
@@ -155,6 +155,13 @@ Function DisplayRampAnalysis(MasterIndex,RampIndex,[LoadWaves,RNAAnalysisDF,Ramp
 	RefoldFit2Start=RefoldRFFitSettings[%Fit2StartTime]
 	RefoldFit2End=RefoldRFFitSettings[%Fit2EndTime]
 	
+	Wave UnfoldRFMI=$RampDF+"UnfoldRF_"+num2str(MasterIndex)
+	Wave UnfoldRFTimeMI=$RampDF+"UnfoldRFTime_"+num2str(MasterIndex)
+	Wave RefoldRFMI=$RampDF+"RefoldRF_"+num2str(MasterIndex)
+	Wave RefoldRFTimeMI=$RampDF+"RefoldRFTime_"+num2str(MasterIndex)
+	
+	RF={UnfoldRFMI[RampIndex],RefoldRFMI[RampIndex]}
+	RFTime={UnfoldRFTimeMI[RampIndex],RefoldRFTimeMI[RampIndex]}
 	DoWindow/F RNARampAnalysis
 	If(V_flag==0)
 		Display/K=1/N=RNARampAnalysis ForceRorS
@@ -172,7 +179,9 @@ Function DisplayRampAnalysis(MasterIndex,RampIndex,[LoadWaves,RNAAnalysisDF,Ramp
 		AppendToGraph/C=(0,0,0)  ForceMinMax vs RefoldFit1End
 		AppendToGraph/C=(0,0,0)  ForceMinMax vs RefoldFit2Start
 		AppendToGraph/C=(0,0,0)  ForceMinMax vs RefoldFit2End
-
+		
+		AppendToGraph/C=(65000,0,0)  RF vs RFTime
+		ModifyGraph mode(RF)=3,marker(RF)=42
 		Label left "Force (pN)"
 		ModifyGraph tickUnit=1
 	EndIf
