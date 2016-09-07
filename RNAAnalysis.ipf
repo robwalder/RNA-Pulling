@@ -97,11 +97,6 @@ Function MeasureRFByMI(MasterIndex,Method,[LoadWaves,RNAAnalysisDF,RampDF])
 	Variable MasterIndex,LoadWaves
 	String RNAAnalysisDF,RampDF,Method
 	
-	Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
-	Wave RefoldSettings=$RampDF+"RefoldSettingsName_"+num2str(MasterIndex)
-	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
-	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
-
 	If(ParamIsDefault(LoadWaves))
 		LoadWaves=0
 	EndIf
@@ -112,6 +107,11 @@ Function MeasureRFByMI(MasterIndex,Method,[LoadWaves,RNAAnalysisDF,RampDF])
 		RampDF="root:RNAPulling:Analysis:RampAnalysis:"
 	EndIf
 	
+	Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
+	Wave RefoldSettings=$RampDF+"RefoldSettingsName_"+num2str(MasterIndex)
+	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
+	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
+
 	If(LoadWaves)
 		LoadAllWavesForIndex(MasterIndex)
 	EndIf
@@ -119,8 +119,13 @@ Function MeasureRFByMI(MasterIndex,Method,[LoadWaves,RNAAnalysisDF,RampDF])
 	Wave Settings=$RNAAnalysisDF+"Settings"
 	Wave/T SettingsStr=$RNAAnalysisDF+"SettingsStr"
  	Variable NumRamps=NumStepsOrRamps(Settings,SettingsStr)
+	Make/O/N=(NumRamps) $RampDF+"UnfoldRF_"+num2str(MasterIndex)
+	Make/O/N=(NumRamps) $RampDF+"UnfoldRFTime_"+num2str(MasterIndex)
+	Make/O/N=(NumRamps) $RampDF+"RefoldRF_"+num2str(MasterIndex)
+	Make/O/N=(NumRamps) $RampDF+"RefoldRFTime_"+num2str(MasterIndex)
  	Variable RampCounter=0
  	For(RampCounter=0;RampCounter<NumRamps;RampCounter+=1)
+	 	LoadRorS(MasterIndex,RampCounter)
  		MeasureBothRF(MasterIndex,RampCounter,Method,LoadWaves=1,RNAAnalysisDF=RNAAnalysisDF,RampDF=RampDF)
  	EndFor
 
@@ -129,6 +134,10 @@ End
 Function MeasureBothRF(MasterIndex,RampIndex,Method,[LoadWaves,RNAAnalysisDF,RampDF])
 	Variable MasterIndex,RampIndex,LoadWaves
 	String RNAAnalysisDF,RampDF,Method
+
+	If(ParamIsDefault(RampDF))
+		RampDF="root:RNAPulling:Analysis:RampAnalysis:"
+	EndIf
 	
 	Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
 	Wave RefoldSettings=$RampDF+"RefoldSettingsName_"+num2str(MasterIndex)
@@ -140,9 +149,6 @@ Function MeasureBothRF(MasterIndex,RampIndex,Method,[LoadWaves,RNAAnalysisDF,Ram
 	EndIf
 	If(ParamIsDefault(RNAAnalysisDF))
 		RNAAnalysisDF="root:RNAPulling:Analysis:"
-	EndIf
-	If(ParamIsDefault(RampDF))
-		RampDF="root:RNAPulling:Analysis:RampAnalysis:"
 	EndIf
 	
 	If(LoadWaves)
