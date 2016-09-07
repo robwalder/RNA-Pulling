@@ -453,117 +453,6 @@ Function RFbyPullingSpeed([TargetDF])
 	
 End
 
-Function RFMultipleRamps(RNAMasterIndex,[TargetDF,LoadWaves])
-	Variable RNAMasterIndex
-	String TargetDF
-	Variable LoadWaves
-	If(ParamIsDefault(LoadWaves))
-		LoadWaves=0
-	EndIf
-	If(ParamIsDefault(TargetDF))
-		TargetDF="root:RNAPulling:Analysis:"
-	EndIf
-	
-	Wave Settings=$TargetDF+"Settings"
-	Wave/T SettingsStr=$TargetDF+"SettingsStr"
-	
-	// Load all waves into analysis directory
-	If(LoadWaves)
-		LoadAllWavesForIndex(RNAMasterIndex)
-	EndIf
-	Variable NumRamps=NumStepsOrRamps(Settings,SettingsStr)
-	Variable RampIndex=0
-
-	// Set Wave references
-	Wave ForceWave=$TargetDF+"ForceRorS"
-	Wave ForceWave_smth=$TargetDF+"ForceRorS_smth"
-	
-	// Make Waves RF waves
-	Make/O/N=(NumRamps) $TargetDF+"UnfoldRF_"+num2str(RNAMasterIndex)
-	Make/O/N=(NumRamps) $TargetDF+"UnfoldRFTime_"+num2str(RNAMasterIndex)
-	Make/O/N=(NumRamps) $TargetDF+"RefoldRF_"+num2str(RNAMasterIndex)
-	Make/O/N=(NumRamps) $TargetDF+"RefoldRFTime_"+num2str(RNAMasterIndex)
-	Wave UnfoldRF=$TargetDF+"UnfoldRF_"+num2str(RNAMasterIndex)
-	Wave UnfoldRFTime=$TargetDF+"UnfoldRFTime_"+num2str(RNAMasterIndex)
-	Wave RefoldRF=$TargetDF+"RefoldRF_"+num2str(RNAMasterIndex)
-	Wave RefoldRFTime=$TargetDF+"RefoldRFTime_"+num2str(RNAMasterIndex)
-	SetDataFolder $TargetDF
-	// Find rupture force for every ramp speed
-	For(RampIndex=0;RampIndex<NumRamps;RampIndex+=1)
-		LoadRorS(RNAMasterIndex,RampIndex)
-		DetermineRuptureForce(ForceWave,ForceWave_smth,Settings)
-		Wave UnfoldingRF=$TargetDF+"UnfoldingRF"
-		Wave RefoldingRF=$TargetDF+"RefoldingRF"
-		UnfoldRF[RampIndex]=UnfoldingRF[%RuptureForce]
-		UnfoldRFTime[RampIndex]=UnfoldingRF[%RuptureTime]
-		RefoldRF[RampIndex]=RefoldingRF[%RuptureForce]
-		RefoldRFTime[RampIndex]=RefoldingRF[%RuptureTime]
-		
-	EndFor
-End
-
-Function/Wave DetermineRuptureForce(ForceWave,ForceWave_smth,RNAPullingSettings,[LRStartFraction,LREndFraction,LRFitName,RFStatsName,RFName])
-	Wave ForceWave,ForceWave_smth,RNAPullingSettings
-	Variable LRStartFraction,LREndFraction
-	String LRFitName,RFStatsName,RFName
-	If(ParamIsDefault(LRStartFraction))
-		LRStartFraction=0.25
-	EndIf
-	If(ParamIsDefault(LREndFraction))
-		LREndFraction=0.25
-		
-	EndIf
-	If(ParamIsDefault(LRFitName))
-		LRFitName="LRFit"
-	EndIf
-	If(ParamIsDefault(RFStatsName))
-		RFStatsName="RFStats"
-	EndIf
-	If(ParamIsDefault(RFName))
-		RFName="RFName"
-	EndIf
-	
-	// Determine start and stop to all time intervals for analysis
-	Variable NumPts=DimSize(ForceWave,0)
-	Variable StartTime=pnt2x(ForceWave,0)
-	Variable EndTime=pnt2x(ForceWave,NumPts)-RNAPullingSettings[%DwellTime]
-	Variable FractionInUnfold=0.5
-	Variable TurnAroundTime=FractionInUnfold*(EndTime-StartTime)+StartTime
-	Variable UnfoldTime=TurnAroundTime-StartTime
-	Variable RefoldTime=EndTime-TurnAroundTime
-	Variable EndUnfoldFit1=StartTime+LRStartFraction*UnfoldTime
-	Variable StartUnfoldFit2=TurnAroundTime-LREndFraction*UnfoldTime
-	Variable EndRefoldFit1=TurnAroundTime+LREndFraction*RefoldTime
-	Variable StartRefoldFit2=EndTime-LRStartFraction*RefoldTime
-	
-	// Fit a line to the 4 main segments associated with unfolded and refolded states
-	Wave LRFitUnfold1=LR(ForceWave_smth,StartTime,LRStartFraction*UnfoldTime,LRFitName="LRFitUnfold1")
-	Wave LRFitUnfold2=LR(ForceWave_smth,StartUnfoldFit2,LREndFraction*UnfoldTime,LRFitName="LRFitUnfold2")
-	Wave LRFitRefold1=LR(ForceWave_smth,TurnAroundTime,LREndFraction*RefoldTime,LRFitName="LRFitRefold1")
-	Wave LRFitRefold2=LR(ForceWave_smth,StartRefoldFit2,LRStartFraction*RefoldTime,LRFitName="LRFitRefold2")
-	
-	// Do the initial estimate of RF
-	Wave UnfoldingRF=EstimateRF(ForceWave_smth,LRFitUnfold1[%LoadingRate],LRFitUnfold1[%YIntercept],StartTime,TurnAroundTime,RFStatsName="UnfoldingRF",FirstLastTarget="Last")
-	Wave RefoldingRF=EstimateRF(ForceWave_smth,LRFitRefold1[%LoadingRate],LRFitRefold1[%YIntercept],TurnAroundTime,EndTime,RFStatsName="RefoldingRF",FirstLastTarget="Last")
-	
-	// Now estimate start of the other states
-	Wave UnfoldingRF2=EstimateRF(ForceWave_smth,LRFitUnfold2[%LoadingRate],LRFitUnfold2[%YIntercept],StartTime,TurnAroundTime,RFStatsName="UnfoldingRF2",FirstLastTarget="First")
-	Wave RefoldingRF2=EstimateRF(ForceWave_smth,LRFitRefold2[%LoadingRate],LRFitRefold2[%YIntercept],TurnAroundTime,EndTime,RFStatsName="RefoldingRF2",FirstLastTarget="First")
-	
-	// Now check for consistency
-	Variable UnfoldIsGood=UnfoldingRF2[%RuptureTime]>UnfoldingRF[%RuptureTime]
-	Variable RefoldIsGood=REfoldingRF2[%RuptureTime]>RefoldingRF[%RuptureTime]
-	
-	If(!UnfoldIsGood)
-		EstimateRF(ForceWave_smth,LRFitUnfold1[%LoadingRate],LRFitUnfold1[%YIntercept],StartTime,TurnAroundTime,RFStatsName="UnfoldingRF",FirstLastTarget="Target",TargetCrossing=UnfoldingRF2[%RuptureTime])
-	EndIf
-	
-	If(!RefoldIsGood)
-		EstimateRF(ForceWave_smth,LRFitRefold1[%LoadingRate],LRFitRefold1[%YIntercept],TurnAroundTime,EndTime,RFStatsName="RefoldingRF",FirstLastTarget="Target",TargetCrossing=RefoldingRF2[%RuptureTime])
-	EndIF
-	
-End
-
 Function LoadRorS(MasterIndex,RSIndex,[TargetDF])
 	Variable MasterIndex,RSIndex
 	String TargetDF
@@ -909,7 +798,6 @@ Function RNAAnalysisButtonProc(ba) : ButtonControl
 					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
 				break
 				case "RuptureForceAnalysisButton":
-					RFMultipleRamps(AnalysisSettings[%MasterIndex])
 				break			
 				case "RFbyVelocityButton":
 					RFbyPullingSpeed()
