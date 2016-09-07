@@ -730,6 +730,8 @@ Window RNAAnalysisPanel() : Panel
 	SetVariable PullingVelocitySV,pos={4,130},size={149,16},proc=RNAAnalysisSetVarProc,title="Pulling Velocity"
 	SetVariable PullingVelocitySV,format="%.2W1Pm/s"
 	SetVariable PullingVelocitySV,limits={-inf,inf,0},value= root:RNAPulling:Analysis:Settings[%RetractVelocity],noedit= 1
+	Button InitRFAnalysis,pos={4,282},size={140,18},proc=RNAAnalysisButtonProc,title="Init RF for This Master Index"
+	Button InitRFAnalysis,fColor=(61440,61440,61440)
 EndMacro
 
 Function RNAAnalysisSetVarProc(sva) : SetVariableControl
@@ -793,6 +795,9 @@ Function RNAAnalysisButtonProc(ba) : ButtonControl
 		case 2: // mouse up
 			// click code here
 			StrSwitch(ControlName)
+				case "InitRFAnalysis":
+					InitRFAnalysis(AnalysisSettings[%MasterIndex])
+				break
 				case "ApplyFilterButton":
 					MakeSmoothedRorS(AnalysisSettings[%MasterIndex])
 					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
