@@ -89,6 +89,83 @@ Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 	// Guess the RF fits settings for all ramps in this master index
 	GuessRFFitSettingsMI(MasterIndex)
 	// Estimate RF for all unfold and refold events in this master index
+	MeasureRFByMI(MasterIndex,"JustFirstRupture")
+End
+
+Function MeasureRFByMI(MasterIndex,Method,[LoadWaves,RNAAnalysisDF,RampDF])
+
+	Variable MasterIndex,LoadWaves
+	String RNAAnalysisDF,RampDF,Method
+	
+	Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
+	Wave RefoldSettings=$RampDF+"RefoldSettingsName_"+num2str(MasterIndex)
+	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
+	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
+
+	If(ParamIsDefault(LoadWaves))
+		LoadWaves=0
+	EndIf
+	If(ParamIsDefault(RNAAnalysisDF))
+		RNAAnalysisDF="root:RNAPulling:Analysis:"
+	EndIf
+	If(ParamIsDefault(RampDF))
+		RampDF="root:RNAPulling:Analysis:RampAnalysis:"
+	EndIf
+	
+	If(LoadWaves)
+		LoadAllWavesForIndex(MasterIndex)
+	EndIf
+	
+	Wave Settings=$RNAAnalysisDF+"Settings"
+	Wave/T SettingsStr=$RNAAnalysisDF+"SettingsStr"
+ 	Variable NumRamps=NumStepsOrRamps(Settings,SettingsStr)
+ 	Variable RampCounter=0
+ 	For(RampCounter=0;RampCounter<NumRamps;RampCounter+=1)
+ 		MeasureBothRF(MasterIndex,RampCounter,Method,LoadWaves=1,RNAAnalysisDF=RNAAnalysisDF,RampDF=RampDF)
+ 	EndFor
+
+End
+
+Function MeasureBothRF(MasterIndex,RampIndex,Method,[LoadWaves,RNAAnalysisDF,RampDF])
+	Variable MasterIndex,RampIndex,LoadWaves
+	String RNAAnalysisDF,RampDF,Method
+	
+	Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
+	Wave RefoldSettings=$RampDF+"RefoldSettingsName_"+num2str(MasterIndex)
+	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
+	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
+
+	If(ParamIsDefault(LoadWaves))
+		LoadWaves=0
+	EndIf
+	If(ParamIsDefault(RNAAnalysisDF))
+		RNAAnalysisDF="root:RNAPulling:Analysis:"
+	EndIf
+	If(ParamIsDefault(RampDF))
+		RampDF="root:RNAPulling:Analysis:RampAnalysis:"
+	EndIf
+	
+	If(LoadWaves)
+		//LoadAllWavesForIndex(MasterIndex)
+		UnfoldRFFitSettings[p]=UnfoldSettings[p][RampIndex]
+		RefoldRFFitSettings[p]=RefoldSettings[p][RampIndex]
+	EndIf
+	Wave ForceWave_smth=$RNAAnalysisDF+"RorSForce_smth"
+	
+	Duplicate/O MeasureRF(ForceWave_smth,UnfoldRFFitSettings,Method=Method) $RampDF+"UnfoldRF"
+	Duplicate/O MeasureRF(ForceWave_smth,RefoldRFFitSettings,Method=Method)	 $RampDF+"RefoldRF"
+	Wave UnfoldRF=$RampDF+"UnfoldRF"
+	Wave RefoldRF=$RampDF+"RefoldRF"
+	
+	Wave UnfoldRFMI=$RampDF+"UnfoldRF_"+num2str(MasterIndex)
+	Wave UnfoldRFTimeMI=$RampDF+"UnfoldRFTime_"+num2str(MasterIndex)
+	Wave RefoldRFMI=$RampDF+"RefoldRF_"+num2str(MasterIndex)
+	Wave RefoldRFTimeMI=$RampDF+"RefoldRFTime_"+num2str(MasterIndex)
+	
+	UnfoldRFMI[RampIndex]=UnfoldRF[%RuptureForce]
+	UnfoldRFTimeMI[RampIndex]=UnfoldRF[%RuptureTime]
+	RefoldRFMI[RampIndex]=RefoldRF[%RuptureForce]
+	RefoldRFTimeMI[RampIndex]=RefoldRF[%RuptureTime]
 	
 End
 
