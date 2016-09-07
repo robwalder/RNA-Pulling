@@ -73,7 +73,7 @@ Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 	// Get Wave Paths
 	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
 	String UnfoldSettingsName=RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
-	String RefoldSettingsName=RampDF+"RefoldSettingsName_"+num2str(MasterIndex)
+	String RefoldSettingsName=RampDF+"RefoldRFFitSettings_"+num2str(MasterIndex)
 	Duplicate/O UnfoldRFFitSettings,$UnfoldSettingsName,$RefoldSettingsName
 	Wave UnfoldSettings=$UnfoldSettingsName
 	Wave RefoldSettings=$RefoldSettingsName
@@ -108,7 +108,7 @@ Function MeasureRFByMI(MasterIndex,Method,[LoadWaves,RNAAnalysisDF,RampDF])
 	EndIf
 	
 	Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
-	Wave RefoldSettings=$RampDF+"RefoldSettingsName_"+num2str(MasterIndex)
+	Wave RefoldSettings=$RampDF+"RefoldRFFitSettings_"+num2str(MasterIndex)
 	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
 	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
 
@@ -140,7 +140,7 @@ Function MeasureBothRF(MasterIndex,RampIndex,Method,[LoadWaves,RNAAnalysisDF,Ram
 	EndIf
 	
 	Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
-	Wave RefoldSettings=$RampDF+"RefoldSettingsName_"+num2str(MasterIndex)
+	Wave RefoldSettings=$RampDF+"RefoldRFFitSettings_"+num2str(MasterIndex)
 	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
 	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
 
@@ -153,10 +153,10 @@ Function MeasureBothRF(MasterIndex,RampIndex,Method,[LoadWaves,RNAAnalysisDF,Ram
 	
 	If(LoadWaves)
 		//LoadAllWavesForIndex(MasterIndex)
-		UnfoldRFFitSettings[p]=UnfoldSettings[p][RampIndex]
-		RefoldRFFitSettings[p]=RefoldSettings[p][RampIndex]
+		UnfoldRFFitSettings=UnfoldSettings[p][RampIndex]
+		RefoldRFFitSettings=RefoldSettings[p][RampIndex]
 	EndIf
-	Wave ForceWave_smth=$RNAAnalysisDF+"RorSForce_smth"
+	Wave ForceWave_smth=$RNAAnalysisDF+"ForceRorS_Smth"
 	
 	Duplicate/O MeasureRF(ForceWave_smth,UnfoldRFFitSettings,Method=Method) $RampDF+"UnfoldRF"
 	Duplicate/O MeasureRF(ForceWave_smth,RefoldRFFitSettings,Method=Method)	 $RampDF+"RefoldRF"
@@ -229,19 +229,23 @@ Function GuessRFFitSettingsMI(MasterIndex,[UnfoldStartFraction,UnfoldEndFraction
 	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
 
 	Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
-	Wave RefoldSettings=$RampDF+"RefoldSettingsName_"+num2str(MasterIndex)
+	Wave RefoldSettings=$RampDF+"RefoldRFFitSettings_"+num2str(MasterIndex)
 	
 	Variable NumRamps=DimSize(UnfoldSettings,1)
 	Variable RampIndex=0
 	LoadRorS(MasterIndex,RampIndex)
-	Wave ForceWave=$RNAAnalysisDF+"RorSForce"
-	Wave ForceWave_smth=$RNAAnalysisDF+"RorSForce_smth"
+	Wave ForceWave=$RNAAnalysisDF+"ForceRorS"
+	Wave ForceWave_smth=$RNAAnalysisDF+"ForceRorS_Smth"
 	Wave RNAPullingSettings=$RNAAnalysisDF+"Settings"
 	For(RampIndex=0;RampIndex<NumRamps;RampIndex+=1)
 		LoadRorS(MasterIndex,RampIndex)
 		GuessRFFitSettings(UnfoldRFFitSettings,RefoldRFFitSettings,ForceWave,ForceWave_smth,RNAPullingSettings,UnfoldStartFraction=UnfoldStartFraction,UnfoldEndFraction=UnfoldEndFraction,RefoldStartFraction=RefoldStartFraction,RefoldEndFraction=RefoldEndFraction)
-		UnfoldSettings[p][RampIndex]=UnfoldRFFitSettings[p]
-		RefoldSettings[p][RampIndex]=RefoldRFFitSettings[p]
+		Variable NumSettings=DimSize(UnfoldRFFitSettings,0)
+		Variable SettingsCounter=0
+		For(SettingsCounter=0;SettingsCounter<NumSettings;SettingsCounter+=1)
+			UnfoldSettings[SettingsCounter][RampIndex]=UnfoldRFFitSettings[SettingsCounter]
+			RefoldSettings[SettingsCounter][RampIndex]=RefoldRFFitSettings[SettingsCounter]
+		EndFor
 	EndFor
 	
 End
