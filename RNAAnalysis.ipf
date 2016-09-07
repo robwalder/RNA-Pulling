@@ -92,6 +92,33 @@ Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 	
 End
 
+Function/Wave MeasureRF(ForceWave_smth,RFFitSettings,[Method])
+	Wave ForceWave_smth,RFFitSettings
+	String Method
+	
+	If(ParamIsDefault(Method))
+		Method="JustFirstRupture"
+	EndIf
+	
+		// Do the initial estimate of RF
+		Wave RF1=EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%Fit1EndTime],RFStatsName="RF1",FirstLastTarget="Last")
+		
+	If(StringMatch(Method,"BothRuptures"))
+		// Now estimate start of the other state
+		Wave RF2=EstimateRF(ForceWave_smth,RFFitSettings[%LoadingRate],RFFitSettings[%YIntercept],RFFitSettings[%Fit2StartTime],RFFitSettings[%Fit2EndTime],RFStatsName="RF2",FirstLastTarget="First")
+		
+		// Now check for consistency
+		Variable RFIsGood=RF2[%RuptureTime]>RF1[%RuptureTime]
+		
+		If(!RFIsGood)
+			EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%Fit1EndTime],RFStatsName="RF1",FirstLastTarget="Target",TargetCrossing=RF2[%RuptureTime])
+		EndIf
+	EndIF
+	
+	Return RF1
+	
+End
+
 // Guess RF fit settings for all ramps of a given master index
 Function GuessRFFitSettingsMI(MasterIndex,[UnfoldStartFraction,UnfoldEndFraction,RefoldStartFraction,RefoldEndFraction,RampDF,RNAAnalysisDF])
 	Variable MasterIndex,UnfoldStartFraction,UnfoldEndFraction,RefoldStartFraction,RefoldEndFraction
