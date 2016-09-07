@@ -89,7 +89,7 @@ Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 	// Guess the RF fits settings for all ramps in this master index
 	GuessRFFitSettingsMI(MasterIndex)
 	// Estimate RF for all unfold and refold events in this master index
-	MeasureRFByMI(MasterIndex,"JustFirstRupture")
+	MeasureRFByMI(MasterIndex,"BothRuptures")
 End
 
 // Show the ramp analysis for a given ramp
@@ -284,7 +284,7 @@ Function/Wave MeasureRF(ForceWave_smth,RFFitSettings,[Method])
 		
 	If(StringMatch(Method,"BothRuptures"))
 		// Now estimate start of the other state
-		Wave RF2=EstimateRF(ForceWave_smth,RFFitSettings[%LoadingRate],RFFitSettings[%YIntercept],RFFitSettings[%RampStartTime],RFFitSettings[%Fit2EndTime],RFStatsName="RF2",FirstLastTarget="First")
+		Wave RF2=EstimateRF(ForceWave_smth,RFFitSettings[%Fit2LR],RFFitSettings[%Fit2YIntercept],RFFitSettings[%RampStartTime],RFFitSettings[%Fit2EndTime],RFStatsName="RF2",FirstLastTarget="First")
 		
 		// Now check for consistency
 		Variable RFIsGood=RF2[%RuptureTime]>RF1[%RuptureTime]
