@@ -92,6 +92,19 @@ Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 	MeasureRFByMI(MasterIndex,"BothRuptures")
 End
 
+Function RFAnalysisQ(MasterIndex,[RampDF])
+
+	Variable MasterIndex
+	String RampDF
+	
+	If(ParamIsDefault(RampDF))
+		RampDF="root:RNAPulling:Analysis:RampAnalysis:"
+	EndIf
+	
+	String RampAnalysisName=RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
+	Return WaveExists($RampAnalysisName)
+End
+
 // Show the ramp analysis for a given ramp
 Function DisplayRampAnalysis(MasterIndex,RampIndex,[LoadWaves,RNAAnalysisDF,RampDF,LoadFitSettings])
 
@@ -692,7 +705,7 @@ End
 
 Window RNAAnalysisPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(999,70,1222,559) as "RNA Analysis"
+	NewPanel /W=(999,70,1222,642) as "RNA Analysis"
 	SetDrawLayer UserBack
 	DrawLine 4,256,189,256
 	DrawLine 4,151,190,151
@@ -758,9 +771,20 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 				 	AnalysisSettings[%NumSteps]=NumStepsOrRamps(Settings,SettingsStr)
 					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])	
 					AllRNADisplays()				
+					If(RFAnalysisQ(AnalysisSettings[%MasterIndex]))
+						DisplayRampAnalysis(AnalysisSettings[%MasterIndex],0,LoadFitSettings=1)
+					Else
+						DoWindow/F RNARampAnalysis
+						If(V_flag==1)
+							KillWindow RNARampAnalysis
+						EndIf
+					EndIf
 				break
 				case "SubIndex":
 					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
+					If(RFAnalysisQ(AnalysisSettings[%MasterIndex]))
+						DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
+					EndIf
 				break
 				case "BoxCarAverage":
 					RSFilterSettings[AnalysisSettings[%MasterIndex]][0]=AnalysisSettings[%BoxCarAverage]
@@ -792,12 +816,15 @@ Function RNAAnalysisButtonProc(ba) : ButtonControl
 			StrSwitch(ControlName)
 				case "InitRFAnalysis":
 					InitRFAnalysis(AnalysisSettings[%MasterIndex])
+					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
 				break
 				case "ApplyFilterButton":
 					MakeSmoothedRorS(AnalysisSettings[%MasterIndex])
 					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
 				break
 				case "RuptureForceAnalysisButton":
+					MeasureRFByMI(AnalysisSettings[%MasterIndex],"BothRuptures")
+					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
 				break			
 				case "RFbyVelocityButton":
 					RFbyPullingSpeed()
