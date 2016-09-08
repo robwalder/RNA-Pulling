@@ -21,6 +21,7 @@ Function InitRNAAnalysis()
 	LoadWave/H/Q/O/P=RNAAnalysisParms "AnalysisSettings.ibw"	
 	SetDataFolder root:RNAPulling:Analysis:RampAnalysis
 	LoadWave/H/Q/O/P=RNAAnalysisParms "RampFitSettings.ibw"	
+	LoadWave/H/Q/O/P=RNAAnalysisParms "RampAnalysisSettings.ibw"	
 
 	// Adjust Analysis Settings Wave
 	Wave AnalysisSettings=root:RNAPulling:Analysis:AnalysisSettings
