@@ -197,8 +197,94 @@ Function DisplayRampAnalysis(MasterIndex,RampIndex,[LoadWaves,RNAAnalysisDF,Ramp
 		ModifyGraph mode(RF)=3,marker(RF)=42
 		Label left "Force (pN)"
 		ModifyGraph tickUnit=1
+		SetWindow RNARampAnalysis hook(RNADisplayHook)=RNADisplayHookFunction
 	EndIf
 
+End
+
+Function RNADisplayHookFunction(s)
+	STRUCT WMWinHookStruct &s
+	
+	Variable hookResult = 0	// 0 if we do not handle event, 1 if we handle it.
+	Wave AnalysisSettings=root:RNAPulling:Analysis:AnalysisSettings
+	String RampDF="root:RNAPulling:Analysis:RampAnalysis:"
+	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
+	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
+	Wave RF=$RampDF+"RF"
+	Wave RFTime=$RampDF+"RFTime"
+	Wave UnfoldRFMI=$RampDF+"UnfoldRF_"+num2str(AnalysisSettings[%MasterIndex])
+	Wave UnfoldRFTimeMI=$RampDF+"UnfoldRFTime_"+num2str(AnalysisSettings[%MasterIndex])
+	Wave RefoldRFMI=$RampDF+"RefoldRF_"+num2str(AnalysisSettings[%MasterIndex])
+	Wave RefoldRFTimeMI=$RampDF+"RefoldRFTime_"+num2str(AnalysisSettings[%MasterIndex])
+	Variable LeftClick=(s.eventmod & 2^0)!=0
+	Variable RightClick=(s.eventmod & 2^4)!=0
+	Variable ControlButton=(s.eventmod & 2^3)!=0
+	Variable MouseTime=AxisValFromPixel("RNARampAnalysis","bottom",s.mouseloc.h)
+	Variable MouseForce=AxisValFromPixel("RNARampAnalysis","left",s.mouseloc.v)
+
+	switch(s.eventCode)
+		case 3:	// Mouse down event
+			
+			If(LeftClick&&ControlButton)
+				Variable NewUnfoldRF=MouseTime*UnfoldRFFitSettings[%Fit1LR]+UnfoldRFFitSettings[%Fit1YIntercept]
+				RF[0]=NewUnfoldRF
+				RFTime[0]=MouseTime
+				UnfoldRFMI[AnalysisSettings[%SubIndex]]=NewUnfoldRF
+				UnfoldRFTimeMI[AnalysisSettings[%SubIndex]]=MouseTime
+				hookResult=1
+			EndIf
+			If(RightClick&&ControlButton)
+				Variable NewRefoldRF=MouseTime*RefoldRFFitSettings[%Fit1LR]+RefoldRFFitSettings[%Fit1YIntercept]
+				RF[1]=NewRefoldRF
+				RFTime[1]=MouseTime
+				RefoldRFMI[AnalysisSettings[%SubIndex]]=NewRefoldRF
+				RefoldRFTimeMI[AnalysisSettings[%SubIndex]]=MouseTime
+				hookResult=1
+			EndIf
+		break				
+		case 11:					// Keyboard event
+			switch (s.keycode)
+				case 28: // Left Arrow
+					AnalysisSettings[%SubIndex]-=1
+					If(AnalysisSettings[%SubIndex]<0)
+						AnalysisSettings[%SubIndex]=0
+					EndIf
+					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
+					DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
+					hookResult = 1				
+					break
+				case 29: // Right Arrow
+					AnalysisSettings[%SubIndex]+=1
+					If(AnalysisSettings[%SubIndex]>=AnalysisSettings[%NumSteps])
+						AnalysisSettings[%SubIndex]=AnalysisSettings[%NumSteps]-1
+					EndIf
+					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
+					DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
+					hookResult = 1
+					break
+				case 30: // Up Arrow
+					hookResult = 1
+					break
+				case 31:  // Down Arrow
+					hookResult = 1
+					break			
+			endswitch
+		break
+		case 22:					// Mouse Wheel
+			AnalysisSettings[%SubIndex]+=s.wheelDy
+			If(AnalysisSettings[%SubIndex]<0)
+				AnalysisSettings[%SubIndex]=0
+			EndIf
+			If(AnalysisSettings[%SubIndex]>=AnalysisSettings[%NumSteps])
+				AnalysisSettings[%SubIndex]=AnalysisSettings[%NumSteps]-1
+			EndIf
+			LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
+			DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
+			hookResult = 1				
+		break
+	endswitch
+
+	return hookResult	// If non-zero, we handled event and Igor will ignore it.
 End
 
 Function MeasureRFByMI(MasterIndex,Method,[LoadWaves,RNAAnalysisDF,RampDF])
