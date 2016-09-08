@@ -212,10 +212,13 @@ Function RNADisplayHookFunction(s)
 	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
 	Wave RF=$RampDF+"RF"
 	Wave RFTime=$RampDF+"RFTime"
-	Wave UnfoldRFMI=$RampDF+"UnfoldRF_"+num2str(AnalysisSettings[%MasterIndex])
-	Wave UnfoldRFTimeMI=$RampDF+"UnfoldRFTime_"+num2str(AnalysisSettings[%MasterIndex])
-	Wave RefoldRFMI=$RampDF+"RefoldRF_"+num2str(AnalysisSettings[%MasterIndex])
-	Wave RefoldRFTimeMI=$RampDF+"RefoldRFTime_"+num2str(AnalysisSettings[%MasterIndex])
+	If(RFAnalysisQ(AnalysisSettings[%MasterIndex]))
+		Wave UnfoldRFMI=$RampDF+"UnfoldRF_"+num2str(AnalysisSettings[%MasterIndex])
+		Wave UnfoldRFTimeMI=$RampDF+"UnfoldRFTime_"+num2str(AnalysisSettings[%MasterIndex])
+		Wave RefoldRFMI=$RampDF+"RefoldRF_"+num2str(AnalysisSettings[%MasterIndex])
+		Wave RefoldRFTimeMI=$RampDF+"RefoldRFTime_"+num2str(AnalysisSettings[%MasterIndex])
+	EndIf
+	
 	Variable LeftClick=(s.eventmod & 2^0)!=0
 	Variable RightClick=(s.eventmod & 2^4)!=0
 	Variable ControlButton=(s.eventmod & 2^3)!=0
@@ -510,7 +513,7 @@ End
 Function RFbyPullingSpeed([TargetDF])
 	String TargetDF
 	If(ParamIsDefault(TargetDF))
-		TargetDF="root:RNAPulling:Analysis:"
+		TargetDF="root:RNAPulling:Analysis:RampAnalysis:"
 	EndIf
 
 	SetDataFolder $TargetDF
