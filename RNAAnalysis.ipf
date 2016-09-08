@@ -705,7 +705,7 @@ End
 
 Window RNAAnalysisPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(999,70,1222,642) as "RNA Analysis"
+	NewPanel /W=(151,66,374,754) as "RNA Analysis"
 	SetDrawLayer UserBack
 	DrawLine 4,256,189,256
 	DrawLine 4,151,190,151
@@ -713,8 +713,8 @@ Window RNAAnalysisPanel() : Panel
 	DrawText 4,64,"RNA Pull Info"
 	DrawText 4,169,"Filtering"
 	DrawText 4,277,"Ramp Analysis"
-	DrawLine 4,375,189,375
-	DrawText 4,400,"Step Analysis"
+	DrawLine 2,482,187,482
+	DrawText 2,507,"Step Analysis"
 	SetVariable MasterIndex,pos={4,2},size={131,16},proc=RNAAnalysisSetVarProc,title="Master Index"
 	SetVariable MasterIndex,value= root:RNAPulling:Analysis:AnalysisSettings[%MasterIndex]
 	SetVariable SubIndex,pos={4,21},size={131,16},proc=RNAAnalysisSetVarProc,title="Ramp/Step Index"
@@ -725,21 +725,33 @@ Window RNAAnalysisPanel() : Panel
 	SetVariable SubIndex1,limits={-inf,inf,0},value= root:RNAPulling:Analysis:AnalysisSettings[%NumSteps],noedit= 1
 	SetVariable NearestForcePull,pos={4,86},size={175,16},title="Nearest Force Pull"
 	SetVariable NearestForcePull,value= root:RNAPulling:Analysis:SettingsStr[%NearestForcePull]
-	SetVariable BoxCarAverage,pos={4,181},size={131,16},proc=RNAAnalysisSetVarProc,title="Box Car Average"
+	SetVariable BoxCarAverage,pos={4,180},size={132,16},proc=RNAAnalysisSetVarProc,title="Box Car Average"
 	SetVariable BoxCarAverage,value= root:RNAPulling:Analysis:AnalysisSettings[%BoxCarAverage]
 	SetVariable Decimation,pos={4,202},size={131,16},proc=RNAAnalysisSetVarProc,title="Decimation"
 	SetVariable Decimation,value= root:RNAPulling:Analysis:AnalysisSettings[%Decimation]
 	Button ApplyFilterButton,pos={4,225},size={131,20},proc=RNAAnalysisButtonProc,title="Apply Filter"
 	Button ApplyFilterButton,fColor=(61440,61440,61440)
-	Button RuptureForceAnalysisButton,pos={4,327},size={121,18},proc=RNAAnalysisButtonProc,title="RF for This Master Index"
+	Button RuptureForceAnalysisButton,pos={2,434},size={121,18},proc=RNAAnalysisButtonProc,title="RF for This Master Index"
 	Button RuptureForceAnalysisButton,fColor=(61440,61440,61440)
-	Button RFbyVelocityButton,pos={4,348},size={121,18},proc=RNAAnalysisButtonProc,title="RF by Velocity"
+	Button RFbyVelocityButton,pos={2,455},size={121,18},proc=RNAAnalysisButtonProc,title="RF by Velocity"
 	Button RFbyVelocityButton,fColor=(61440,61440,61440)
 	SetVariable PullingVelocitySV,pos={4,130},size={149,16},proc=RNAAnalysisSetVarProc,title="Pulling Velocity"
 	SetVariable PullingVelocitySV,format="%.2W1Pm/s"
 	SetVariable PullingVelocitySV,limits={-inf,inf,0},value= root:RNAPulling:Analysis:Settings[%RetractVelocity],noedit= 1
 	Button InitRFAnalysis,pos={4,282},size={140,18},proc=RNAAnalysisButtonProc,title="Init RF for This Master Index"
 	Button InitRFAnalysis,fColor=(61440,61440,61440)
+	Button RFAnalysisRampButton,pos={1,413},size={121,18},proc=RNAAnalysisButtonProc,title="RF for This Ramp"
+	Button RFAnalysisRampButton,fColor=(61440,61440,61440)
+	SetVariable UnfoldFit1Fraction,pos={4,307},size={132,16},proc=RNAAnalysisSetVarProc,title="Unfold Fit1 Fraction"
+	SetVariable UnfoldFit1Fraction,limits={0,1,0.05},value= root:RNAPulling:Analysis:RampAnalysis:RampAnalysisSettings[%UnfoldFit1Fraction]
+	SetVariable UnfoldFit2Fraction,pos={2,327},size={132,16},proc=RNAAnalysisSetVarProc,title="Unfold Fit2 Fraction"
+	SetVariable UnfoldFit2Fraction,limits={0,1,0.05},value= root:RNAPulling:Analysis:RampAnalysis:RampAnalysisSettings[%UnfoldFit2Fraction]
+	SetVariable RefoldFit1Fraction,pos={4,347},size={132,16},proc=RNAAnalysisSetVarProc,title="Refold Fit1 Fraction"
+	SetVariable RefoldFit1Fraction,limits={0,1,0.05},value= root:RNAPulling:Analysis:RampAnalysis:RampAnalysisSettings[%RefoldFit1Fraction]
+	SetVariable RefoldFit2Fraction,pos={2,367},size={132,16},proc=RNAAnalysisSetVarProc,title="Refold Fit2 Fraction"
+	SetVariable RefoldFit2Fraction,limits={0,1,0.05},value= root:RNAPulling:Analysis:RampAnalysis:RampAnalysisSettings[%RefoldFit2Fraction]
+	Button ApplyFractionToMI,pos={2,387},size={119,18},proc=RNAAnalysisButtonProc,title="Apply Fractions to MI"
+	Button ApplyFractionToMI,fColor=(61440,61440,61440)
 EndMacro
 
 Function RNAAnalysisSetVarProc(sva) : SetVariableControl
@@ -752,7 +764,18 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 	Wave ZSetPoint=root:RNAPulling:Analysis:ZSetPoint
 	Wave RorSForce=root:RNAPulling:Analysis:RorSForce
 	Wave RorSSep=root:RNAPulling:Analysis:RorSSep
+	Wave ForceWave=root:RNAPulling:Analysis:ForceRorS
+	Wave ForceWave_smth=root:RNAPulling:Analysis:ForceRorS_smth
 	Wave RSFilterSettings=root:RNAPulling:Analysis:RSFilterSettings
+	String RampDF="root:RNAPulling:Analysis:RampAnalysis:"
+	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
+	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
+	Wave RampAnalysisSettings=$RampDF+"RampAnalysisSettings"
+
+	If(RFAnalysisQ(AnalysisSettings[%MasterIndex]))
+		Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(AnalysisSettings[%MasterIndex])
+		Wave RefoldSettings=$RampDF+"RefoldRFFitSettings_"+num2str(AnalysisSettings[%MasterIndex])
+	EndIf
 
 	switch( sva.eventCode )
 		case 1: // mouse up
@@ -793,6 +816,23 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 					RSFilterSettings[AnalysisSettings[%MasterIndex]][1]=AnalysisSettings[%Decimation]
 				
 				break
+				case "UnfoldFit1Fraction":
+				case "UnfoldFit2Fraction":
+				case "RefoldFit1Fraction":
+				case "RefoldFit2Fraction":
+					If(RFAnalysisQ(AnalysisSettings[%MasterIndex]))
+						DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
+					EndIf
+					GuessRFFitSettings(UnfoldRFFitSettings,RefoldRFFitSettings,ForceWave,ForceWave_smth,Settings,UnfoldStartFraction=RampAnalysisSettings[%UnfoldFit1Fraction],UnfoldEndFraction=RampAnalysisSettings[%UnfoldFit2Fraction],RefoldStartFraction=RampAnalysisSettings[%RefoldFit1Fraction],RefoldEndFraction=RampAnalysisSettings[%RefoldFit2Fraction])
+					Variable NumSettings=DimSize(UnfoldRFFitSettings,0)
+					Variable SettingsCounter=0
+					For(SettingsCounter=0;SettingsCounter<NumSettings;SettingsCounter+=1)
+						UnfoldSettings[SettingsCounter][AnalysisSettings[%SubIndex]]=UnfoldRFFitSettings[SettingsCounter]
+						RefoldSettings[SettingsCounter][AnalysisSettings[%SubIndex]]=RefoldRFFitSettings[SettingsCounter]
+					EndFor
+					MeasureBothRF(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],"BothRuptures",LoadWaves=1)
+					DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
+				break
 				
 			
 			EndSwitch
@@ -809,6 +849,8 @@ Function RNAAnalysisButtonProc(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
 	String ControlName=ba.ctrlname
 	Wave AnalysisSettings=root:RNAPulling:Analysis:AnalysisSettings
+	String RampDF="root:RNAPulling:Analysis:RampAnalysis:"
+	Wave RampAnalysisSettings=$RampDF+"RampAnalysisSettings"
 
 	switch( ba.eventCode )
 		case 2: // mouse up
@@ -822,12 +864,22 @@ Function RNAAnalysisButtonProc(ba) : ButtonControl
 					MakeSmoothedRorS(AnalysisSettings[%MasterIndex])
 					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
 				break
+				case "RFAnalysisRampButton":
+				
+				break
 				case "RuptureForceAnalysisButton":
 					MeasureRFByMI(AnalysisSettings[%MasterIndex],"BothRuptures")
 					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
 				break			
 				case "RFbyVelocityButton":
 					RFbyPullingSpeed()
+				break			
+				case "ApplyFractionToMI":
+					GuessRFFitSettingsMI(AnalysisSettings[%MasterIndex],UnfoldStartFraction=RampAnalysisSettings[%UnfoldFit1Fraction],UnfoldEndFraction=RampAnalysisSettings[%UnfoldFit2Fraction],RefoldStartFraction=RampAnalysisSettings[%RefoldFit1Fraction],RefoldEndFraction=RampAnalysisSettings[%RefoldFit2Fraction])
+					MeasureRFByMI(AnalysisSettings[%MasterIndex],"BothRuptures")
+					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
+					DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
+
 				break			
 				
 			EndSwitch
