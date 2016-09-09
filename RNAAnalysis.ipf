@@ -209,6 +209,7 @@ Function RNADisplayHookFunction(s)
 	Variable hookResult = 0	// 0 if we do not handle event, 1 if we handle it.
 	Wave AnalysisSettings=root:RNAPulling:Analysis:AnalysisSettings
 	String RampDF="root:RNAPulling:Analysis:RampAnalysis:"
+	String RNAAnalysisDF="root:RNAPulling:Analysis:"
 	Wave UnfoldRFFitSettings=$RampDF+"UnfoldRFFitSettings"
 	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
 	Wave RF=$RampDF+"RF"
@@ -218,11 +219,18 @@ Function RNADisplayHookFunction(s)
 		Wave UnfoldRFTimeMI=$RampDF+"UnfoldRFTime_"+num2str(AnalysisSettings[%MasterIndex])
 		Wave RefoldRFMI=$RampDF+"RefoldRF_"+num2str(AnalysisSettings[%MasterIndex])
 		Wave RefoldRFTimeMI=$RampDF+"RefoldRFTime_"+num2str(AnalysisSettings[%MasterIndex])
+		Wave RampAnalysisSettings=$RampDF+"RampAnalysisSettings"
+		Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(AnalysisSettings[%MasterIndex])
+		Wave RefoldSettings=$RampDF+"RefoldRFFitSettings_"+num2str(AnalysisSettings[%MasterIndex])
 	EndIf
+	Wave ForceRorS=$RNAAnalysisDF+"ForceRorS"
+	Wave ForceRorS_Smth=$RNAAnalysisDF+"ForceRorS_Smth"
+	Wave Settings=$RNAAnalysisDF+"Settings"
 	
 	Variable LeftClick=(s.eventmod & 2^0)!=0
 	Variable RightClick=(s.eventmod & 2^4)!=0
 	Variable ControlButton=(s.eventmod & 2^3)!=0
+	Variable ShiftButton=(s.eventmod & 2^1)!=0
 	Variable MouseTime=AxisValFromPixel("RNARampAnalysis","bottom",s.mouseloc.h)
 	Variable MouseForce=AxisValFromPixel("RNARampAnalysis","left",s.mouseloc.v)
 
@@ -275,16 +283,70 @@ Function RNADisplayHookFunction(s)
 			endswitch
 		break
 		case 22:					// Mouse Wheel
-			AnalysisSettings[%SubIndex]+=s.wheelDy
-			If(AnalysisSettings[%SubIndex]<0)
-				AnalysisSettings[%SubIndex]=0
-			EndIf
-			If(AnalysisSettings[%SubIndex]>=AnalysisSettings[%NumSteps])
-				AnalysisSettings[%SubIndex]=AnalysisSettings[%NumSteps]-1
-			EndIf
-			LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
-			DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
-			hookResult = 1				
+			If(!ControlButton&&!ShiftButton)
+				AnalysisSettings[%SubIndex]+=s.wheelDy
+				If(AnalysisSettings[%SubIndex]<0)
+					AnalysisSettings[%SubIndex]=0
+				EndIf
+				If(AnalysisSettings[%SubIndex]>=AnalysisSettings[%NumSteps])
+					AnalysisSettings[%SubIndex]=AnalysisSettings[%NumSteps]-1
+				EndIf
+				LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
+				DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
+				hookResult = 1
+			EndIf				
+			If(ControlButton||ShiftButton)
+				
+				Variable UnfoldTime=UnfoldRFFitSettings[%RampEndTime]-UnfoldRFFitSettings[%RampStartTime]
+				Variable RefoldTime=RefoldRFFitSettings[%RampEndTime]-RefoldRFFitSettings[%RampStartTime]
+				// Determine which interval we are trying to change and then change it by 5% of the ramp interval
+				Variable UnfoldChange=s.wheelDy*(0.02*UnfoldTime)
+				Variable RefoldChange=s.wheelDY*(0.02*UnfoldTime)
+
+				If((MouseTime>UnfoldRFFitSettings[%Fit1StartTime])&&(MouseTime<UnfoldRFFitSettings[%Fit1EndTime]))
+					If(ControlButton)
+						UnfoldRFFitSettings[%Fit1StartTime]+=UnfoldChange
+					Else
+						UnfoldRFFitSettings[%Fit1EndTime]+=UnfoldChange
+					EndIf
+					
+				EndIf
+				If((MouseTime>UnfoldRFFitSettings[%Fit2StartTime])&&(MouseTime<UnfoldRFFitSettings[%Fit2EndTime]))
+					If(ControlButton)
+						UnfoldRFFitSettings[%Fit2StartTime]+=UnfoldChange
+					Else
+						UnfoldRFFitSettings[%Fit2EndTime]+=UnfoldChange
+					EndIf
+					
+				EndIf
+				If((MouseTime>RefoldRFFitSettings[%Fit1StartTime])&&(MouseTime<RefoldRFFitSettings[%Fit1EndTime]))
+					If(ControlButton)
+						RefoldRFFitSettings[%Fit1StartTime]+=RefoldChange
+					Else
+						RefoldRFFitSettings[%Fit1EndTime]+=RefoldChange
+					EndIf
+					
+				EndIf
+				If((MouseTime>RefoldRFFitSettings[%Fit2StartTime])&&(MouseTime<RefoldRFFitSettings[%Fit2EndTime]))
+					If(ControlButton)
+						RefoldRFFitSettings[%Fit2StartTime]+=RefoldChange
+					Else
+						RefoldRFFitSettings[%Fit2EndTime]+=RefoldChange
+					EndIf
+					
+				EndIf
+				
+				ApplyRFFit(UnfoldRFFitSettings,RefoldRFFitSettings,ForceRorS)
+				Variable NumSettings=DimSize(UnfoldRFFitSettings,0)
+				Variable SettingsCounter=0
+				For(SettingsCounter=0;SettingsCounter<NumSettings;SettingsCounter+=1)
+					UnfoldSettings[SettingsCounter][AnalysisSettings[%SubIndex]]=UnfoldRFFitSettings[SettingsCounter]
+					RefoldSettings[SettingsCounter][AnalysisSettings[%SubIndex]]=RefoldRFFitSettings[SettingsCounter]
+				EndFor
+				MeasureBothRF(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],"BothRuptures",LoadWaves=1)
+				DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
+				hookResult = 1
+			Endif
 		break
 	endswitch
 
@@ -449,11 +511,32 @@ Function GuessRFFitSettingsMI(MasterIndex,[UnfoldStartFraction,UnfoldEndFraction
 	
 End
 
+Function ApplyRFFit(UnfoldSettings,RefoldSettings,ForceWave)
+	Wave UnfoldSettings,RefoldSettings,ForceWave
+	
+	// Fit a line to the 4 main segments associated with unfolded and refolded states
+	Wave LRFitUnfold1=LR(ForceWave,UnfoldSettings[%Fit1StartTime],UnfoldSettings[%Fit1EndTime],LRFitName="LRFitUnfold1",SpecifyEndTime=1)
+	Wave LRFitUnfold2=LR(ForceWave,UnfoldSettings[%Fit2StartTime],UnfoldSettings[%Fit2EndTime],LRFitName="LRFitUnfold2",SpecifyEndTime=1)
+	Wave LRFitRefold1=LR(ForceWave,RefoldSettings[%Fit1StartTime],RefoldSettings[%Fit1EndTime],LRFitName="LRFitRefold1",SpecifyEndTime=1)
+	Wave LRFitRefold2=LR(ForceWave,RefoldSettings[%Fit2StartTime],RefoldSettings[%Fit2EndTime],LRFitName="LRFitRefold2",SpecifyEndTime=1)
+	// Set Unfold Fit Settings
+	UnfoldSettings[%Fit1LR]=LRFitUnfold1[%LoadingRate]
+	UnfoldSettings[%Fit1YIntercept]=LRFitUnfold1[%YIntercept]
+	UnfoldSettings[%Fit2LR]=LRFitUnfold2[%LoadingRate]
+	UnfoldSettings[%Fit2YIntercept]=LRFitUnfold2[%YIntercept]
+	// Set Refold Fit Settings
+	RefoldSettings[%Fit1LR]=LRFitRefold1[%LoadingRate]
+	RefoldSettings[%Fit1YIntercept]=LRFitRefold1[%YIntercept]
+	RefoldSettings[%Fit2LR]=LRFitRefold2[%LoadingRate]
+	RefoldSettings[%Fit2YIntercept]=LRFitRefold2[%YIntercept]
+
+End
+
 // Guess RF Fit Settings for a single, individual ramp.
 Function GuessRFFitSettings(UnfoldSettings,RefoldSettings,ForceWave,ForceWave_smth,RNAPullingSettings,[UnfoldStartFraction,UnfoldEndFraction,RefoldStartFraction,RefoldEndFraction])
 	Wave UnfoldSettings,RefoldSettings,ForceWave,ForceWave_smth,RNAPullingSettings
 	Variable UnfoldStartFraction,UnfoldEndFraction,RefoldStartFraction,RefoldEndFraction
-	String RFName
+	
 	If(ParamIsDefault(UnfoldStartFraction))
 		UnfoldStartFraction=0.5
 	EndIf
@@ -480,12 +563,6 @@ Function GuessRFFitSettings(UnfoldSettings,RefoldSettings,ForceWave,ForceWave_sm
 	Variable EndRefoldFit1=TurnAroundTime+RefoldStartFraction*RefoldTime
 	Variable StartRefoldFit2=EndTime-RefoldEndFraction*RefoldTime
 	
-	// Fit a line to the 4 main segments associated with unfolded and refolded states
-	Wave LRFitUnfold1=LR(ForceWave,StartTime,EndUnfoldFit1,LRFitName="LRFitUnfold1",SpecifyEndTime=1)
-	Wave LRFitUnfold2=LR(ForceWave,StartUnfoldFit2,TurnAroundTime,LRFitName="LRFitUnfold2",SpecifyEndTime=1)
-	Wave LRFitRefold1=LR(ForceWave,TurnAroundTime,EndRefoldFit1,LRFitName="LRFitRefold1",SpecifyEndTime=1)
-	Wave LRFitRefold2=LR(ForceWave,StartRefoldFit2,EndTime,LRFitName="LRFitRefold2",SpecifyEndTime=1)
-	
 	// Set Unfold Fit Settings
 	UnfoldSettings[%RampStartTime]=StartTime
 	UnfoldSettings[%RampEndTime]=TurnAroundTime
@@ -493,10 +570,6 @@ Function GuessRFFitSettings(UnfoldSettings,RefoldSettings,ForceWave,ForceWave_sm
 	UnfoldSettings[%Fit1EndTime]=EndUnfoldFit1
 	UnfoldSettings[%Fit2StartTime]=StartUnfoldFit2
 	UnfoldSettings[%Fit2EndTime]=TurnAroundTime
-	UnfoldSettings[%Fit1LR]=LRFitUnfold1[%LoadingRate]
-	UnfoldSettings[%Fit1YIntercept]=LRFitUnfold1[%YIntercept]
-	UnfoldSettings[%Fit2LR]=LRFitUnfold2[%LoadingRate]
-	UnfoldSettings[%Fit2YIntercept]=LRFitUnfold2[%YIntercept]
 	// Set Refold Fit Settings
 	RefoldSettings[%RampStartTime]=TurnAroundTime
 	RefoldSettings[%RampEndTime]=EndTime
@@ -504,11 +577,9 @@ Function GuessRFFitSettings(UnfoldSettings,RefoldSettings,ForceWave,ForceWave_sm
 	RefoldSettings[%Fit1EndTime]=EndRefoldFit1
 	RefoldSettings[%Fit2StartTime]=StartRefoldFit2
 	RefoldSettings[%Fit2EndTime]=EndTime
-	RefoldSettings[%Fit1LR]=LRFitRefold1[%LoadingRate]
-	RefoldSettings[%Fit1YIntercept]=LRFitRefold1[%YIntercept]
-	RefoldSettings[%Fit2LR]=LRFitRefold2[%LoadingRate]
-	RefoldSettings[%Fit2YIntercept]=LRFitRefold2[%YIntercept]
 	
+	// Do fit with settings and save fit parameters to settings wave
+	ApplyRFFit(UnfoldSettings,RefoldSettings,ForceWave)
 End
 
 Function RFbyPullingSpeed([TargetDF])
@@ -795,7 +866,7 @@ End
 
 Window RNAAnalysisPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(151,66,374,754) as "RNA Analysis"
+	NewPanel /W=(56,58,279,746) as "RNA Analysis"
 	SetDrawLayer UserBack
 	DrawLine 4,256,189,256
 	DrawLine 4,151,190,151
@@ -828,17 +899,17 @@ Window RNAAnalysisPanel() : Panel
 	SetVariable PullingVelocitySV,pos={4,130},size={149,16},proc=RNAAnalysisSetVarProc,title="Pulling Velocity"
 	SetVariable PullingVelocitySV,format="%.2W1Pm/s"
 	SetVariable PullingVelocitySV,limits={-inf,inf,0},value= root:RNAPulling:Analysis:Settings[%RetractVelocity],noedit= 1
-	Button InitRFAnalysis,pos={4,282},size={140,18},proc=RNAAnalysisButtonProc,title="Init RF for This Master Index"
+	Button InitRFAnalysis,pos={2,282},size={140,18},proc=RNAAnalysisButtonProc,title="Init RF for This Master Index"
 	Button InitRFAnalysis,fColor=(61440,61440,61440)
-	Button RFAnalysisRampButton,pos={1,413},size={121,18},proc=RNAAnalysisButtonProc,title="RF for This Ramp"
+	Button RFAnalysisRampButton,pos={2,413},size={121,18},proc=RNAAnalysisButtonProc,title="RF for This Ramp"
 	Button RFAnalysisRampButton,fColor=(61440,61440,61440)
-	SetVariable UnfoldFit1Fraction,pos={4,307},size={132,16},proc=RNAAnalysisSetVarProc,title="Unfold Fit1 Fraction"
+	SetVariable UnfoldFit1Fraction,pos={2,307},size={140,16},proc=RNAAnalysisSetVarProc,title="Unfold Fit1 Fraction"
 	SetVariable UnfoldFit1Fraction,limits={0,1,0.05},value= root:RNAPulling:Analysis:RampAnalysis:RampAnalysisSettings[%UnfoldFit1Fraction]
-	SetVariable UnfoldFit2Fraction,pos={2,327},size={132,16},proc=RNAAnalysisSetVarProc,title="Unfold Fit2 Fraction"
+	SetVariable UnfoldFit2Fraction,pos={2,327},size={140,16},proc=RNAAnalysisSetVarProc,title="Unfold Fit2 Fraction"
 	SetVariable UnfoldFit2Fraction,limits={0,1,0.05},value= root:RNAPulling:Analysis:RampAnalysis:RampAnalysisSettings[%UnfoldFit2Fraction]
-	SetVariable RefoldFit1Fraction,pos={4,347},size={132,16},proc=RNAAnalysisSetVarProc,title="Refold Fit1 Fraction"
+	SetVariable RefoldFit1Fraction,pos={2,347},size={140,16},proc=RNAAnalysisSetVarProc,title="Refold Fit1 Fraction"
 	SetVariable RefoldFit1Fraction,limits={0,1,0.05},value= root:RNAPulling:Analysis:RampAnalysis:RampAnalysisSettings[%RefoldFit1Fraction]
-	SetVariable RefoldFit2Fraction,pos={2,367},size={132,16},proc=RNAAnalysisSetVarProc,title="Refold Fit2 Fraction"
+	SetVariable RefoldFit2Fraction,pos={2,367},size={140,16},proc=RNAAnalysisSetVarProc,title="Refold Fit2 Fraction"
 	SetVariable RefoldFit2Fraction,limits={0,1,0.05},value= root:RNAPulling:Analysis:RampAnalysis:RampAnalysisSettings[%RefoldFit2Fraction]
 	Button ApplyFractionToMI,pos={2,387},size={119,18},proc=RNAAnalysisButtonProc,title="Apply Fractions to MI"
 	Button ApplyFractionToMI,fColor=(61440,61440,61440)
