@@ -1,7 +1,8 @@
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
 #include ":ChopRNAPulls"
-#include "::Force Ramp Utilities:BoxCarAveraging"
-#include "::Force Ramp Utilities:SelectFR"
+#include "::Force-Ramp-Utilities:BoxCarAveraging"
+#include "::Force-Ramp-Utilities:SelectFR"
+
 
 
 Function InitRNAAnalysis()
