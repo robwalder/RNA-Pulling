@@ -100,7 +100,7 @@ Function UpdateRNAPullingOffsets(MasterIndex,NewForceOffset,NewSepOffset,[RampDF
 	Wave RSForceOffset=root:RNAPulling:Analysis:RSForceOffset
 	Wave RSSepOffset=root:RNAPulling:Analysis:RSSepOffset	
 	
-	If(NewForceOffset!=RSForceOffset[MasterIndex])
+	If(!(NewForceOffset==RSForceOffset[MasterIndex]))
 		// Adjust Ramp fits and rupture forces if we have them.
 		If(RFAnalysisQ(MasterIndex))
 			Variable ForceDiff=NewForceOffset-RSForceOffset[MasterIndex]
@@ -872,9 +872,10 @@ Function LoadAllWavesForIndex(MasterIndex,[TargetDF])
 	Duplicate/T/O GetRNAWave(MasterIndex,"SettingsStr") $(TargetDF+"SettingsStr")
 	Duplicate/O GetRNAWave(MasterIndex,"ZSetPoint") $(TargetDF+"ZSetPoint")
 	
+	Wave/T SettingsStr=$(TargetDF+"SettingsStr")
 	Wave TargetDefV=$(TargetDF+"DefV")
 	String RNAPullInfo=Note(TargetDefV)
-	String FRName=StringByKey("\rNearestForcePull",RNAPullInfo,"=",";\r")
+	String FRName=SettingsStr[%NearestForcePull]//StringByKey("\rNearestForcePull",RNAPullInfo,"=",";\r")
 	
 	ApplyFuncsToForceWaves("SaveForceAndSep(Force_Ret,Sep_Ret,TargetFolder=\""+TargetDF+"\",NewName=\"Selected\")",FPList=FRName)
 	Wave SelectedForce_Ret=root:RNAPulling:Analysis:SelectedForce_Ret
