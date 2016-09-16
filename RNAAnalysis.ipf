@@ -36,7 +36,9 @@ Function InitRNAAnalysis()
 	RSFilterSettings=1
 	SetDimLabel 1,0, BoxCarNum, RSFilterSettings
  	SetDimLabel 1,1, Decimation, RSFilterSettings
-	
+	// Make filtering settings wave
+	Make/O/N=(AnalysisSettings[%NumRNAPulls]) root:RNAPulling:Analysis:RSForceOffset,root:RNAPulling:Analysis:RSSepOffset
+	InitRNAPullingOffsets()
 	// Determine the number of times the rna pulling program ran
 	Wave Settings=root:RNAPulling:Analysis:Settings
 	Wave/T SettingsStr=root:RNAPulling:Analysis:SettingsStr
@@ -52,6 +54,81 @@ Function InitRNAAnalysis()
 
 End
 
+Function InitRNAPullingOffsets()
+	Wave RSForceOffset=root:RNAPulling:Analysis:RSForceOffset
+	Wave RSSepOffset=root:RNAPulling:Analysis:RSSepOffset	
+		
+	Variable NumRS=DimSize(RSForceOffset,0)
+	Variable RSCounter=0
+	For(RSCounter=0;RSCounter<NumRS;RSCounter+=1)
+		If(WaveExists($"root:FRU:preprocessing:Offsets"))
+			Wave/T SettingsStr=$"root:RNAPulling:SavedData:SettingsStr"+num2str(RSCounter)
+			String FRName=SettingsStr[%NearestForcePull]
+			Wave FRUOffsets=root:FRU:preprocessing:Offsets
+			RSForceOffset[RSCounter]=FRUOffsets[%$FRName][%Offset_Force]
+			RSSepOffset[RSCounter]=FRUOffsets[%$FRName][%Offset_Sep]
+		EndIf
+	EndFor
+End
+
+Function UpdateNFPFromTimeline()
+	 InitRNAPullingOffsets()
+	 Wave RSForceOffset=root:RNAPulling:Analysis:RSForceOffset
+	Wave RSSepOffset=root:RNAPulling:Analysis:RSSepOffset	
+		
+	Variable NumRS=DimSize(RSForceOffset,0)
+	Variable RSCounter=0
+	
+	For(RSCounter=0;RSCounter<NumRS;RSCounter+=1)
+		String Name="RNAPulling"+num2str(RSCounter)
+		String NFP=NearestARForceRamp(Name)
+		Wave/T SettingsStr=$"root:RNAPulling:SavedData:SettingsStr"+num2str(RSCounter)
+		SettingsStr[%NearestForcePull]=NFP
+		Wave FRUOffsets=root:FRU:preprocessing:Offsets
+		UpdateRNAPullingOffsets(RSCounter,FRUOffsets[%$NFP][%Offset_Force],FRUOffsets[%$NFP][%Offset_Sep])
+	EndFor
+
+End
+
+Function UpdateRNAPullingOffsets(MasterIndex,NewForceOffset,NewSepOffset,[RampDF])
+	Variable MasterIndex,NewForceOffset,NewSepOffset
+	String RampDF
+	If(ParamIsDefault(RampDF))
+		RampDF="root:RNAPulling:Analysis:RampAnalysis:"
+	EndIf
+
+	Wave RSForceOffset=root:RNAPulling:Analysis:RSForceOffset
+	Wave RSSepOffset=root:RNAPulling:Analysis:RSSepOffset	
+	
+	If(NewForceOffset!=RSForceOffset[MasterIndex])
+		// Adjust Ramp fits and rupture forces if we have them.
+		If(RFAnalysisQ(MasterIndex))
+			Variable ForceDiff=NewForceOffset-RSForceOffset[MasterIndex]
+			// First update y-intercept for fits
+			Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
+			Wave RefoldSettings=$RampDF+"RefoldRFFitSettings_"+num2str(MasterIndex)
+			Variable NumRamps=DimSize(UnfoldSettings,1)
+			Variable RampCounter=0
+			For(RampCounter=0;RampCounter<NumRamps;RampCounter+=1)
+				UnfoldSettings[%Fit1YIntercept][RampCounter]+=ForceDiff
+				UnfoldSettings[%Fit2YIntercept][RampCounter]+=ForceDiff
+				RefoldSettings[%Fit1YIntercept][RampCounter]+=ForceDiff
+				RefoldSettings[%Fit2YIntercept][RampCounter]+=ForceDiff
+			EndFor
+			// Now update the rupture forces
+			Wave UnfoldRF=$RampDF+"UnfoldRF_"+num2str(MasterIndex)
+			Wave RefoldRF=$RampDF+"RefoldRF_"+num2str(MasterIndex)
+			UnfoldRF+=ForceDiff
+			RefoldRF+=ForceDiff
+
+		EndIf
+		RSForceOffset[MasterIndex]=NewForceOffset
+
+	EndIf
+	If(NewSepOffset!=RSSepOffset[MasterIndex])
+		RSSepOffset[MasterIndex]=NewSepOffset
+	EndIf
+End
 // Init a rupture force analysis for a given master index
 Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 	Variable MasterIndex,LoadWaves
@@ -813,12 +890,15 @@ Function LoadAllWavesForIndex(MasterIndex,[TargetDF])
 	Variable VtoF=SpringConstant*Invols
 	Variable ForceOffset=0
 	Variable SepOffset=0
-	
 	If(WaveExists($"root:FRU:preprocessing:Offsets"))
 		Wave FRUOffsets=root:FRU:preprocessing:Offsets
-		ForceOffset=FRUOffsets[%$FRName][%Offset_Force]
-		SepOffset=FRUOffsets[%$FRName][%Offset_Sep]
+		UpdateRNAPullingOffsets(MasterIndex,FRUOffsets[%$FRName][%Offset_Force],FRUOffsets[%$FRName][%Offset_Sep])
 	EndIf
+	Wave RSForceOffset=root:RNAPulling:Analysis:RSForceOffset
+	Wave RSSepOffset=root:RNAPulling:Analysis:RSSepOffset	
+	ForceOffset=RSForceOffset[MasterIndex]
+	SepOffset=RSSepOffset[MasterIndex]
+		
 	FastOp RorSForce=(ForceOffset)-(VtoF)*RorSForce
 	FastOp SelectedForce_Ret=(ForceOffset)-SelectedForce_Ret
 	
