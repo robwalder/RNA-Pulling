@@ -36,7 +36,9 @@ Function InitRNAAnalysis()
 	RSFilterSettings=1
 	SetDimLabel 1,0, BoxCarNum, RSFilterSettings
  	SetDimLabel 1,1, Decimation, RSFilterSettings
-	
+	// Make filtering settings wave
+	Make/O/N=(AnalysisSettings[%NumRNAPulls]) root:RNAPulling:Analysis:RSForceOffset,root:RNAPulling:Analysis:RSSepOffset
+	InitRNAPullingOffsets()
 	// Determine the number of times the rna pulling program ran
 	Wave Settings=root:RNAPulling:Analysis:Settings
 	Wave/T SettingsStr=root:RNAPulling:Analysis:SettingsStr
@@ -52,6 +54,81 @@ Function InitRNAAnalysis()
 
 End
 
+Function InitRNAPullingOffsets()
+	Wave RSForceOffset=root:RNAPulling:Analysis:RSForceOffset
+	Wave RSSepOffset=root:RNAPulling:Analysis:RSSepOffset	
+		
+	Variable NumRS=DimSize(RSForceOffset,0)
+	Variable RSCounter=0
+	For(RSCounter=0;RSCounter<NumRS;RSCounter+=1)
+		If(WaveExists($"root:FRU:preprocessing:Offsets"))
+			Wave/T SettingsStr=$"root:RNAPulling:SavedData:SettingsStr"+num2str(RSCounter)
+			String FRName=SettingsStr[%NearestForcePull]
+			Wave FRUOffsets=root:FRU:preprocessing:Offsets
+			RSForceOffset[RSCounter]=FRUOffsets[%$FRName][%Offset_Force]
+			RSSepOffset[RSCounter]=FRUOffsets[%$FRName][%Offset_Sep]
+		EndIf
+	EndFor
+End
+
+Function UpdateNFPFromTimeline()
+	 InitRNAPullingOffsets()
+	 Wave RSForceOffset=root:RNAPulling:Analysis:RSForceOffset
+	Wave RSSepOffset=root:RNAPulling:Analysis:RSSepOffset	
+		
+	Variable NumRS=DimSize(RSForceOffset,0)
+	Variable RSCounter=0
+	
+	For(RSCounter=0;RSCounter<NumRS;RSCounter+=1)
+		String Name="RNAPulling"+num2str(RSCounter)
+		String NFP=NearestARForceRamp(Name)
+		Wave/T SettingsStr=$"root:RNAPulling:SavedData:SettingsStr"+num2str(RSCounter)
+		SettingsStr[%NearestForcePull]=NFP
+		Wave FRUOffsets=root:FRU:preprocessing:Offsets
+		UpdateRNAPullingOffsets(RSCounter,FRUOffsets[%$NFP][%Offset_Force],FRUOffsets[%$NFP][%Offset_Sep])
+	EndFor
+
+End
+
+Function UpdateRNAPullingOffsets(MasterIndex,NewForceOffset,NewSepOffset,[RampDF])
+	Variable MasterIndex,NewForceOffset,NewSepOffset
+	String RampDF
+	If(ParamIsDefault(RampDF))
+		RampDF="root:RNAPulling:Analysis:RampAnalysis:"
+	EndIf
+
+	Wave RSForceOffset=root:RNAPulling:Analysis:RSForceOffset
+	Wave RSSepOffset=root:RNAPulling:Analysis:RSSepOffset	
+	
+	If(!(NewForceOffset==RSForceOffset[MasterIndex]))
+		// Adjust Ramp fits and rupture forces if we have them.
+		If(RFAnalysisQ(MasterIndex))
+			Variable ForceDiff=+NewForceOffset-RSForceOffset[MasterIndex]
+			// First update y-intercept for fits
+			Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
+			Wave RefoldSettings=$RampDF+"RefoldRFFitSettings_"+num2str(MasterIndex)
+			Variable NumRamps=DimSize(UnfoldSettings,1)
+			Variable RampCounter=0
+			For(RampCounter=0;RampCounter<NumRamps;RampCounter+=1)
+				UnfoldSettings[%Fit1YIntercept][RampCounter]+=ForceDiff
+				UnfoldSettings[%Fit2YIntercept][RampCounter]+=ForceDiff
+				RefoldSettings[%Fit1YIntercept][RampCounter]+=ForceDiff
+				RefoldSettings[%Fit2YIntercept][RampCounter]+=ForceDiff
+			EndFor
+			// Now update the rupture forces
+			Wave UnfoldRF=$RampDF+"UnfoldRF_"+num2str(MasterIndex)
+			Wave RefoldRF=$RampDF+"RefoldRF_"+num2str(MasterIndex)
+			UnfoldRF+=ForceDiff
+			RefoldRF+=ForceDiff
+
+		EndIf
+		RSForceOffset[MasterIndex]=NewForceOffset
+
+	EndIf
+	If(NewSepOffset!=RSSepOffset[MasterIndex])
+		RSSepOffset[MasterIndex]=NewSepOffset
+	EndIf
+End
 // Init a rupture force analysis for a given master index
 Function InitRFAnalysis(MasterIndex,[LoadWaves,RNAAnalysisDF,RampDF])
 	Variable MasterIndex,LoadWaves
@@ -418,18 +495,32 @@ Function MeasureBothRF(MasterIndex,RampIndex,Method,[LoadWaves,RNAAnalysisDF,Ram
 		UnfoldRFFitSettings=UnfoldSettings[p][RampIndex]
 		RefoldRFFitSettings=RefoldSettings[p][RampIndex]
 	EndIf
+	Wave ForceWave=$RNAAnalysisDF+"ForceRorS"
 	Wave ForceWave_smth=$RNAAnalysisDF+"ForceRorS_Smth"
-	
-	Duplicate/O MeasureRF(ForceWave_smth,UnfoldRFFitSettings,Method=Method) $RampDF+"UnfoldRF"
-	Duplicate/O MeasureRF(ForceWave_smth,RefoldRFFitSettings,Method=Method)	 $RampDF+"RefoldRF"
-	Wave UnfoldRF=$RampDF+"UnfoldRF"
-	Wave RefoldRF=$RampDF+"RefoldRF"
 	
 	Wave UnfoldRFMI=$RampDF+"UnfoldRF_"+num2str(MasterIndex)
 	Wave UnfoldRFTimeMI=$RampDF+"UnfoldRFTime_"+num2str(MasterIndex)
 	Wave RefoldRFMI=$RampDF+"RefoldRF_"+num2str(MasterIndex)
 	Wave RefoldRFTimeMI=$RampDF+"RefoldRFTime_"+num2str(MasterIndex)
-	
+
+	If(StringMatch("TargetTime",Method))
+		ApplyRFFit(UnfoldRFFitSettings,RefoldRFFitSettings,ForceWave)
+		Duplicate/O MeasureRF(ForceWave_smth,UnfoldRFFitSettings,Method=Method,TargetRuptureTime=UnfoldRFTimeMI[RampIndex]) $RampDF+"UnfoldRF"
+		Duplicate/O MeasureRF(ForceWave_smth,RefoldRFFitSettings,Method=Method,TargetRuptureTime=RefoldRFTimeMI[RampIndex]) $RampDF+"RefoldRF"
+		Variable NumSettings=DimSize(UnfoldRFFitSettings,0)
+		Variable SettingsCounter=0
+		For(SettingsCounter=0;SettingsCounter<NumSettings;SettingsCounter+=1)
+			UnfoldSettings[SettingsCounter][RampIndex]=UnfoldRFFitSettings[SettingsCounter]
+			RefoldSettings[SettingsCounter][RampIndex]=RefoldRFFitSettings[SettingsCounter]
+		EndFor
+
+	Else
+		Duplicate/O MeasureRF(ForceWave_smth,UnfoldRFFitSettings,Method=Method) $RampDF+"UnfoldRF"
+		Duplicate/O MeasureRF(ForceWave_smth,RefoldRFFitSettings,Method=Method)	 $RampDF+"RefoldRF"
+	EndIf
+	Wave UnfoldRF=$RampDF+"UnfoldRF"
+	Wave RefoldRF=$RampDF+"RefoldRF"
+		
 	UnfoldRFMI[RampIndex]=UnfoldRF[%RuptureForce]
 	UnfoldRFTimeMI[RampIndex]=UnfoldRF[%RuptureTime]
 	RefoldRFMI[RampIndex]=RefoldRF[%RuptureForce]
@@ -437,16 +528,26 @@ Function MeasureBothRF(MasterIndex,RampIndex,Method,[LoadWaves,RNAAnalysisDF,Ram
 	
 End
 
-Function/Wave MeasureRF(ForceWave_smth,RFFitSettings,[Method])
+Function/Wave MeasureRF(ForceWave_smth,RFFitSettings,[Method,TargetRuptureTime])
 	Wave ForceWave_smth,RFFitSettings
 	String Method
+	Variable TargetRuptureTime
 	
 	If(ParamIsDefault(Method))
 		Method="JustFirstRupture"
 	EndIf
+	If(ParamIsDefault(TargetRuptureTime))
+		TargetRuptureTime=0
+	EndIf
 	
+	If(StringMatch(Method,"TargetTime"))
+		// Now estimate start of the other state
+		Wave RF1=EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%RampEndTime],RFStatsName="RF1",FirstLastTarget="TargetTime",TargetTime=TargetRuptureTime)
+	Else
+		Wave RF1=EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%RampEndTime],RFStatsName="RF1",FirstLastTarget="Last")		
+	EndIF
+
 		// Do the initial estimate of RF
-		Wave RF1=EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%RampEndTime],RFStatsName="RF1",FirstLastTarget="Last")
 		
 	If(StringMatch(Method,"BothRuptures"))
 		// Now estimate start of the other state
@@ -795,13 +896,17 @@ Function LoadAllWavesForIndex(MasterIndex,[TargetDF])
 	Duplicate/T/O GetRNAWave(MasterIndex,"SettingsStr") $(TargetDF+"SettingsStr")
 	Duplicate/O GetRNAWave(MasterIndex,"ZSetPoint") $(TargetDF+"ZSetPoint")
 	
+	Wave/T SettingsStr=$(TargetDF+"SettingsStr")
 	Wave TargetDefV=$(TargetDF+"DefV")
 	String RNAPullInfo=Note(TargetDefV)
-	String FRName=StringByKey("\rNearestForcePull",RNAPullInfo,"=",";\r")
+	String FRName=SettingsStr[%NearestForcePull]//StringByKey("\rNearestForcePull",RNAPullInfo,"=",";\r")
 	
-	ApplyFuncsToForceWaves("SaveForceAndSep(Force_Ret,Sep_Ret,TargetFolder=\""+TargetDF+"\",NewName=\"Selected\")",FPList=FRName)
+	// Changed this to the "extension" curve, since this typically happens right after the measurement. 
+	// Allows better visualization of force offset and should be useful for doing "integrate" work energy analysis.
+	ApplyFuncsToForceWaves("SaveForceAndSep(Force_Ext,Sep_Ext,TargetFolder=\""+TargetDF+"\",NewName=\"Selected\")",FPList=FRName)
 	Wave SelectedForce_Ret=root:RNAPulling:Analysis:SelectedForce_Ret
 	Wave SelectedSep_Ret=root:RNAPulling:Analysis:SelectedSep_Ret
+	LoadCorrectedFR(SelectedForce_Ret,SelectedSep_Ret,FRName)
 	
 	Duplicate/O$(TargetDF+"DefV"), $(TargetDF+"RorSForce")
 	Duplicate/O$(TargetDF+"ZSensor"),  $(TargetDF+"RorSSep")
@@ -813,20 +918,22 @@ Function LoadAllWavesForIndex(MasterIndex,[TargetDF])
 	Variable VtoF=SpringConstant*Invols
 	Variable ForceOffset=0
 	Variable SepOffset=0
-	
 	If(WaveExists($"root:FRU:preprocessing:Offsets"))
 		Wave FRUOffsets=root:FRU:preprocessing:Offsets
-		ForceOffset=FRUOffsets[%$FRName][%Offset_Force]
-		SepOffset=FRUOffsets[%$FRName][%Offset_Sep]
+		UpdateRNAPullingOffsets(MasterIndex,FRUOffsets[%$FRName][%Offset_Force],FRUOffsets[%$FRName][%Offset_Sep])
 	EndIf
+	Wave RSForceOffset=root:RNAPulling:Analysis:RSForceOffset
+	Wave RSSepOffset=root:RNAPulling:Analysis:RSSepOffset	
+	ForceOffset=RSForceOffset[MasterIndex]
+	SepOffset=RSSepOffset[MasterIndex]
+		
 	FastOp RorSForce=(ForceOffset)-(VtoF)*RorSForce
-	FastOp SelectedForce_Ret=(ForceOffset)-SelectedForce_Ret
 	
 	String ZSensorInfo=note(RorSSep)
 	Variable ZSens=-1*str2num(StringByKey("\rZLVDTSens",ZSensorInfo,"=",";\r"))
 	Variable InverseK=1/SpringConstant
-	FastOp RorSSep=(ZSens)*RorSSep-(InverseK)*RorSForce-(SepOffset)
-	FastOp	SelectedSep_Ret=SelectedSep_Ret-(SepOffset)
+	Variable InverseKFO=InverseK*ForceOffset-SepOffset
+	FastOp RorSSep=(InverseKFO)+(ZSens)*RorSSep-(InverseK)*RorSForce//+(SepOffset)
 
 	MakeSmoothedRorS(MasterIndex,TargetDF=TargetDF)	
 End
@@ -1026,8 +1133,9 @@ Function RNAAnalysisButtonProc(ba) : ButtonControl
 					MakeSmoothedRorS(AnalysisSettings[%MasterIndex])
 					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
 				break
-				case "RFAnalysisRampButton":
-				
+				case "RedoRFAnalysis":
+					MeasureRFByMI(AnalysisSettings[%MasterIndex],"TargetTime")
+					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])					
 				break
 				case "RuptureForceAnalysisButton":
 					MeasureRFByMI(AnalysisSettings[%MasterIndex],"BothRuptures")
