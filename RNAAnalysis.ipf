@@ -974,7 +974,7 @@ End
 
 Window RNAAnalysisPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(56,58,279,746) as "RNA Analysis"
+	NewPanel /W=(1586,94,1809,782) as "RNA Analysis"
 	SetDrawLayer UserBack
 	DrawLine 4,256,189,256
 	DrawLine 4,151,190,151
@@ -982,8 +982,8 @@ Window RNAAnalysisPanel() : Panel
 	DrawText 4,64,"RNA Pull Info"
 	DrawText 4,169,"Filtering"
 	DrawText 4,277,"Ramp Analysis"
-	DrawLine 2,482,187,482
-	DrawText 2,507,"Step Analysis"
+	DrawLine 2,502,187,502
+	DrawText 2,527,"Step Analysis"
 	SetVariable MasterIndex,pos={4,2},size={131,16},proc=RNAAnalysisSetVarProc,title="Master Index"
 	SetVariable MasterIndex,value= root:RNAPulling:Analysis:AnalysisSettings[%MasterIndex]
 	SetVariable SubIndex,pos={4,21},size={131,16},proc=RNAAnalysisSetVarProc,title="Ramp/Step Index"
@@ -1002,7 +1002,7 @@ Window RNAAnalysisPanel() : Panel
 	Button ApplyFilterButton,fColor=(61440,61440,61440)
 	Button RuptureForceAnalysisButton,pos={2,434},size={121,18},proc=RNAAnalysisButtonProc,title="RF for This Master Index"
 	Button RuptureForceAnalysisButton,fColor=(61440,61440,61440)
-	Button RFbyVelocityButton,pos={2,455},size={121,18},proc=RNAAnalysisButtonProc,title="RF by Velocity"
+	Button RFbyVelocityButton,pos={2,475},size={121,18},proc=RNAAnalysisButtonProc,title="RF by Velocity"
 	Button RFbyVelocityButton,fColor=(61440,61440,61440)
 	SetVariable PullingVelocitySV,pos={4,130},size={149,16},proc=RNAAnalysisSetVarProc,title="Pulling Velocity"
 	SetVariable PullingVelocitySV,format="%.2W1Pm/s"
@@ -1021,6 +1021,8 @@ Window RNAAnalysisPanel() : Panel
 	SetVariable RefoldFit2Fraction,limits={0,1,0.05},value= root:RNAPulling:Analysis:RampAnalysis:RampAnalysisSettings[%RefoldFit2Fraction]
 	Button ApplyFractionToMI,pos={2,387},size={119,18},proc=RNAAnalysisButtonProc,title="Apply Fractions to MI"
 	Button ApplyFractionToMI,fColor=(61440,61440,61440)
+	Button RedoRFAnalysis,pos={4,454},size={121,18},proc=RNAAnalysisButtonProc,title="RF for MI (Same Fit)"
+	Button RedoRFAnalysis,fColor=(61440,61440,61440)
 EndMacro
 
 Function RNAAnalysisSetVarProc(sva) : SetVariableControl
