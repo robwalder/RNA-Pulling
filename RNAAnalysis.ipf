@@ -877,9 +877,12 @@ Function LoadAllWavesForIndex(MasterIndex,[TargetDF])
 	String RNAPullInfo=Note(TargetDefV)
 	String FRName=SettingsStr[%NearestForcePull]//StringByKey("\rNearestForcePull",RNAPullInfo,"=",";\r")
 	
-	ApplyFuncsToForceWaves("SaveForceAndSep(Force_Ret,Sep_Ret,TargetFolder=\""+TargetDF+"\",NewName=\"Selected\")",FPList=FRName)
+	// Changed this to the "extension" curve, since this typically happens right after the measurement. 
+	// Allows better visualization of force offset and should be useful for doing "integrate" work energy analysis.
+	ApplyFuncsToForceWaves("SaveForceAndSep(Force_Ext,Sep_Ext,TargetFolder=\""+TargetDF+"\",NewName=\"Selected\")",FPList=FRName)
 	Wave SelectedForce_Ret=root:RNAPulling:Analysis:SelectedForce_Ret
 	Wave SelectedSep_Ret=root:RNAPulling:Analysis:SelectedSep_Ret
+	LoadCorrectedFR(SelectedForce_Ret,SelectedSep_Ret,FRName)
 	
 	Duplicate/O$(TargetDF+"DefV"), $(TargetDF+"RorSForce")
 	Duplicate/O$(TargetDF+"ZSensor"),  $(TargetDF+"RorSSep")
@@ -901,13 +904,12 @@ Function LoadAllWavesForIndex(MasterIndex,[TargetDF])
 	SepOffset=RSSepOffset[MasterIndex]
 		
 	FastOp RorSForce=(ForceOffset)-(VtoF)*RorSForce
-	FastOp SelectedForce_Ret=(ForceOffset)-SelectedForce_Ret
 	
 	String ZSensorInfo=note(RorSSep)
 	Variable ZSens=-1*str2num(StringByKey("\rZLVDTSens",ZSensorInfo,"=",";\r"))
 	Variable InverseK=1/SpringConstant
-	FastOp RorSSep=(ZSens)*RorSSep-(InverseK)*RorSForce-(SepOffset)
-	FastOp	SelectedSep_Ret=SelectedSep_Ret-(SepOffset)
+	Variable InverseKFO=InverseK*ForceOffset-SepOffset
+	FastOp RorSSep=(InverseKFO)+(ZSens)*RorSSep-(InverseK)*RorSForce//+(SepOffset)
 
 	MakeSmoothedRorS(MasterIndex,TargetDF=TargetDF)	
 End
