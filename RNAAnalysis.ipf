@@ -729,6 +729,71 @@ Function RFbyPullingSpeed([TargetDF])
 	
 End
 
+// Function calculate mean rupture force of RNA ramps.
+Function RNAMeanRF([Mode,TargetDF])
+	String Mode,TargetDF
+	
+	If(ParamIsDefault(Mode))
+		Mode="ByRampSpeed"
+	EndIf
+
+	If(ParamIsDefault(TargetDF))
+		TargetDF="root:RNAPulling:Analysis:RampAnalysis:"
+	EndIf
+	SetDataFolder $TargetDF
+	String UnfoldingWaves,RefoldingWaves
+	StrSwitch(Mode)
+		case "ByIndex":
+			UnfoldingWaves=WaveList("UnfoldRF_*", ";","")
+			RefoldingWaves=WaveList("RefoldRF_*", ";","")
+		break
+		case "ByRampSpeed":
+			UnfoldingWaves=WaveList("AllUnfoldRF_*", ";","")
+			RefoldingWaves=WaveList("AllRefoldRF_*", ";","")
+		break
+	EndSwitch
+	Variable NumWaves=ItemsInList(UnfoldingWaves)
+	Variable WaveCounter=0
+	
+	Make/O/D/N=(NumWaves) $"RFError"+Mode,$"UFError"+Mode,$"UF"+Mode,$"RF"+Mode,$"RF"+Mode+"Velocity",$"RF"+Mode+"TimeToLastCFR"
+	Wave UnfoldForce=$"UF"+Mode
+	Wave RefoldForce=$"RF"+Mode
+	Wave UnfoldForceError=$"UFError"+Mode
+	Wave RefoldForceError=$"RFError"+Mode
+	Wave Velocity=$"RF"+Mode+"Velocity"
+	Wave TimeToLastCFR=$"RF"+Mode+"TimeToLastCFR"
+	For(WaveCounter=0;WaveCounter<NumWaves;WaveCounter+=1)
+		SetDataFolder $TargetDF
+		Wave CurrentUnfoldRF=$StringFromList(WaveCounter,UnfoldingWaves)
+		Wave CurrentRefoldRF=$StringFromList(WaveCounter,RefoldingWaves)
+		WaveStats/Q CurrentUnfoldRF
+		UnfoldForce[WaveCounter]=V_avg
+		UnfoldForceError[WaveCounter]=V_sdev
+		WaveStats/Q CurrentRefoldRF
+		RefoldForce[WaveCounter]=V_avg
+		RefoldForceError[WaveCounter]=V_sdev
+		StrSwitch(Mode)
+			case "ByIndex":
+				Variable Index=Nan
+				sscanf StringFromList(WaveCounter,UnfoldingWaves), "UnfoldRF_%f", Index
+				Wave Settings=$"root:RNAPulling:SavedData:Settings"+num2str(Index)
+				Velocity[WaveCounter]=Settings[%RetractVelocity]
+				TimeToLastCFR[WaveCounter]=TimeSincePreviousCFR("RNAPulling"+num2str(Index))
+			break
+			case "ByRampSpeed":
+				Variable CurrentPullingSpeed=Nan
+				sscanf StringFromList(WaveCounter,UnfoldingWaves), "AllUnfoldRF_%f", CurrentPullingSpeed
+
+				Velocity[WaveCounter]=CurrentPullingSpeed	
+				TimeToLastCFR[WaveCounter]=NaN
+			break
+		EndSwitch
+
+	EndFor
+	
+
+End
+
 Function LoadRorS(MasterIndex,RSIndex,[TargetDF])
 	Variable MasterIndex,RSIndex
 	String TargetDF
