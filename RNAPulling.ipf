@@ -1,10 +1,10 @@
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
 #pragma version=2.1
-#include "ForceRamp" version>=2
-#include "WaveDimNote" version>=1
-#include "BetterHamsterFishing" version>=1
-#include "CenteredForcePulls_9" version>=9
-#include "ClosedLoopMotion"
+#include "::Force-Ramp:ForceRamp" version>=2
+#include "::General-Igor-Utilities:WaveDimNote" version>=1
+#include ":BetterHamsterFishing" version>=1
+#include "::Centering:CenteredForcePulls" version>=9
+#include "::Cypher-Utilities:ClosedLoopMotion"
 
 // For version 2.1
 // Moved DoClosedLoopZMotion to ClosedLoopMotion
