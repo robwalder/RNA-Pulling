@@ -103,7 +103,7 @@ Function UpdateRNAPullingOffsets(MasterIndex,NewForceOffset,NewSepOffset,[RampDF
 	If(!(NewForceOffset==RSForceOffset[MasterIndex]))
 		// Adjust Ramp fits and rupture forces if we have them.
 		If(RFAnalysisQ(MasterIndex))
-			Variable ForceDiff=NewForceOffset-RSForceOffset[MasterIndex]
+			Variable ForceDiff=+NewForceOffset-RSForceOffset[MasterIndex]
 			// First update y-intercept for fits
 			Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
 			Wave RefoldSettings=$RampDF+"RefoldRFFitSettings_"+num2str(MasterIndex)
@@ -495,18 +495,32 @@ Function MeasureBothRF(MasterIndex,RampIndex,Method,[LoadWaves,RNAAnalysisDF,Ram
 		UnfoldRFFitSettings=UnfoldSettings[p][RampIndex]
 		RefoldRFFitSettings=RefoldSettings[p][RampIndex]
 	EndIf
+	Wave ForceWave=$RNAAnalysisDF+"ForceRorS"
 	Wave ForceWave_smth=$RNAAnalysisDF+"ForceRorS_Smth"
-	
-	Duplicate/O MeasureRF(ForceWave_smth,UnfoldRFFitSettings,Method=Method) $RampDF+"UnfoldRF"
-	Duplicate/O MeasureRF(ForceWave_smth,RefoldRFFitSettings,Method=Method)	 $RampDF+"RefoldRF"
-	Wave UnfoldRF=$RampDF+"UnfoldRF"
-	Wave RefoldRF=$RampDF+"RefoldRF"
 	
 	Wave UnfoldRFMI=$RampDF+"UnfoldRF_"+num2str(MasterIndex)
 	Wave UnfoldRFTimeMI=$RampDF+"UnfoldRFTime_"+num2str(MasterIndex)
 	Wave RefoldRFMI=$RampDF+"RefoldRF_"+num2str(MasterIndex)
 	Wave RefoldRFTimeMI=$RampDF+"RefoldRFTime_"+num2str(MasterIndex)
-	
+
+	If(StringMatch("TargetTime",Method))
+		ApplyRFFit(UnfoldRFFitSettings,RefoldRFFitSettings,ForceWave)
+		Duplicate/O MeasureRF(ForceWave_smth,UnfoldRFFitSettings,Method=Method,TargetRuptureTime=UnfoldRFTimeMI[RampIndex]) $RampDF+"UnfoldRF"
+		Duplicate/O MeasureRF(ForceWave_smth,RefoldRFFitSettings,Method=Method,TargetRuptureTime=RefoldRFTimeMI[RampIndex]) $RampDF+"RefoldRF"
+		Variable NumSettings=DimSize(UnfoldRFFitSettings,0)
+		Variable SettingsCounter=0
+		For(SettingsCounter=0;SettingsCounter<NumSettings;SettingsCounter+=1)
+			UnfoldSettings[SettingsCounter][RampIndex]=UnfoldRFFitSettings[SettingsCounter]
+			RefoldSettings[SettingsCounter][RampIndex]=RefoldRFFitSettings[SettingsCounter]
+		EndFor
+
+	Else
+		Duplicate/O MeasureRF(ForceWave_smth,UnfoldRFFitSettings,Method=Method) $RampDF+"UnfoldRF"
+		Duplicate/O MeasureRF(ForceWave_smth,RefoldRFFitSettings,Method=Method)	 $RampDF+"RefoldRF"
+	EndIf
+	Wave UnfoldRF=$RampDF+"UnfoldRF"
+	Wave RefoldRF=$RampDF+"RefoldRF"
+		
 	UnfoldRFMI[RampIndex]=UnfoldRF[%RuptureForce]
 	UnfoldRFTimeMI[RampIndex]=UnfoldRF[%RuptureTime]
 	RefoldRFMI[RampIndex]=RefoldRF[%RuptureForce]
@@ -514,16 +528,26 @@ Function MeasureBothRF(MasterIndex,RampIndex,Method,[LoadWaves,RNAAnalysisDF,Ram
 	
 End
 
-Function/Wave MeasureRF(ForceWave_smth,RFFitSettings,[Method])
+Function/Wave MeasureRF(ForceWave_smth,RFFitSettings,[Method,TargetRuptureTime])
 	Wave ForceWave_smth,RFFitSettings
 	String Method
+	Variable TargetRuptureTime
 	
 	If(ParamIsDefault(Method))
 		Method="JustFirstRupture"
 	EndIf
+	If(ParamIsDefault(TargetRuptureTime))
+		TargetRuptureTime=0
+	EndIf
 	
+	If(StringMatch(Method,"TargetTime"))
+		// Now estimate start of the other state
+		Wave RF1=EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%RampEndTime],RFStatsName="RF1",FirstLastTarget="TargetTime",TargetTime=TargetRuptureTime)
+	Else
+		Wave RF1=EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%RampEndTime],RFStatsName="RF1",FirstLastTarget="Last")		
+	EndIF
+
 		// Do the initial estimate of RF
-		Wave RF1=EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%RampEndTime],RFStatsName="RF1",FirstLastTarget="Last")
 		
 	If(StringMatch(Method,"BothRuptures"))
 		// Now estimate start of the other state
@@ -703,6 +727,71 @@ Function RFbyPullingSpeed([TargetDF])
 		Concatenate/NP/O {TempRefold,CurrentRefoldRF}, $TargetDF+"AllRefoldRF_"+num2str(Floor(RefoldV*1e9))+"nmps"
 	EndFor	
 	
+End
+
+// Function calculate mean rupture force of RNA ramps.
+Function RNAMeanRF([Mode,TargetDF])
+	String Mode,TargetDF
+	
+	If(ParamIsDefault(Mode))
+		Mode="ByRampSpeed"
+	EndIf
+
+	If(ParamIsDefault(TargetDF))
+		TargetDF="root:RNAPulling:Analysis:RampAnalysis:"
+	EndIf
+	SetDataFolder $TargetDF
+	String UnfoldingWaves,RefoldingWaves
+	StrSwitch(Mode)
+		case "ByIndex":
+			UnfoldingWaves=WaveList("UnfoldRF_*", ";","")
+			RefoldingWaves=WaveList("RefoldRF_*", ";","")
+		break
+		case "ByRampSpeed":
+			UnfoldingWaves=WaveList("AllUnfoldRF_*", ";","")
+			RefoldingWaves=WaveList("AllRefoldRF_*", ";","")
+		break
+	EndSwitch
+	Variable NumWaves=ItemsInList(UnfoldingWaves)
+	Variable WaveCounter=0
+	
+	Make/O/D/N=(NumWaves) $"RFError"+Mode,$"UFError"+Mode,$"UF"+Mode,$"RF"+Mode,$"RF"+Mode+"Velocity",$"RF"+Mode+"TimeToLastCFR"
+	Wave UnfoldForce=$"UF"+Mode
+	Wave RefoldForce=$"RF"+Mode
+	Wave UnfoldForceError=$"UFError"+Mode
+	Wave RefoldForceError=$"RFError"+Mode
+	Wave Velocity=$"RF"+Mode+"Velocity"
+	Wave TimeToLastCFR=$"RF"+Mode+"TimeToLastCFR"
+	For(WaveCounter=0;WaveCounter<NumWaves;WaveCounter+=1)
+		SetDataFolder $TargetDF
+		Wave CurrentUnfoldRF=$StringFromList(WaveCounter,UnfoldingWaves)
+		Wave CurrentRefoldRF=$StringFromList(WaveCounter,RefoldingWaves)
+		WaveStats/Q CurrentUnfoldRF
+		UnfoldForce[WaveCounter]=V_avg
+		UnfoldForceError[WaveCounter]=V_sdev
+		WaveStats/Q CurrentRefoldRF
+		RefoldForce[WaveCounter]=V_avg
+		RefoldForceError[WaveCounter]=V_sdev
+		StrSwitch(Mode)
+			case "ByIndex":
+				Variable Index=Nan
+				sscanf StringFromList(WaveCounter,UnfoldingWaves), "UnfoldRF_%f", Index
+				Wave Settings=$"root:RNAPulling:SavedData:Settings"+num2str(Index)
+				Velocity[WaveCounter]=Settings[%RetractVelocity]
+				TimeToLastCFR[WaveCounter]=TimeSincePreviousCFR("RNAPulling"+num2str(Index))
+			break
+			case "ByRampSpeed":
+				Variable CurrentPullingSpeed=Nan
+				sscanf StringFromList(WaveCounter,UnfoldingWaves), "AllUnfoldRF_%f", CurrentPullingSpeed
+
+				Velocity[WaveCounter]=CurrentPullingSpeed	
+				TimeToLastCFR[WaveCounter]=NaN
+			break
+		EndSwitch
+
+	EndFor
+	
+
 End
 
 Function LoadRorS(MasterIndex,RSIndex,[TargetDF])
@@ -941,7 +1030,7 @@ Function MakeSmoothedRorS(MasterIndex,[TargetDF])
 		DecimationFactor=RSFilterSettings[MasterIndex][1]
 	EndIf
 	If(BoxCarNumber>1)
-		BoxCarAndDecimateFR(RorSForce_Smth,RorSSep_Smth,BoxCarNumber,DecimationFactor)
+		BoxCarAndDecimateFR(RorSForce_Smth,RorSSep_Smth,BoxCarNumber,DecimationFactor,SmoothMode="SavitzkyGolay")
 	EndIF
 
 End
@@ -950,7 +1039,7 @@ End
 
 Window RNAAnalysisPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(56,58,279,746) as "RNA Analysis"
+	NewPanel /W=(1586,94,1809,782) as "RNA Analysis"
 	SetDrawLayer UserBack
 	DrawLine 4,256,189,256
 	DrawLine 4,151,190,151
@@ -958,8 +1047,8 @@ Window RNAAnalysisPanel() : Panel
 	DrawText 4,64,"RNA Pull Info"
 	DrawText 4,169,"Filtering"
 	DrawText 4,277,"Ramp Analysis"
-	DrawLine 2,482,187,482
-	DrawText 2,507,"Step Analysis"
+	DrawLine 2,502,187,502
+	DrawText 2,527,"Step Analysis"
 	SetVariable MasterIndex,pos={4,2},size={131,16},proc=RNAAnalysisSetVarProc,title="Master Index"
 	SetVariable MasterIndex,value= root:RNAPulling:Analysis:AnalysisSettings[%MasterIndex]
 	SetVariable SubIndex,pos={4,21},size={131,16},proc=RNAAnalysisSetVarProc,title="Ramp/Step Index"
@@ -978,7 +1067,7 @@ Window RNAAnalysisPanel() : Panel
 	Button ApplyFilterButton,fColor=(61440,61440,61440)
 	Button RuptureForceAnalysisButton,pos={2,434},size={121,18},proc=RNAAnalysisButtonProc,title="RF for This Master Index"
 	Button RuptureForceAnalysisButton,fColor=(61440,61440,61440)
-	Button RFbyVelocityButton,pos={2,455},size={121,18},proc=RNAAnalysisButtonProc,title="RF by Velocity"
+	Button RFbyVelocityButton,pos={2,475},size={121,18},proc=RNAAnalysisButtonProc,title="RF by Velocity"
 	Button RFbyVelocityButton,fColor=(61440,61440,61440)
 	SetVariable PullingVelocitySV,pos={4,130},size={149,16},proc=RNAAnalysisSetVarProc,title="Pulling Velocity"
 	SetVariable PullingVelocitySV,format="%.2W1Pm/s"
@@ -997,6 +1086,8 @@ Window RNAAnalysisPanel() : Panel
 	SetVariable RefoldFit2Fraction,limits={0,1,0.05},value= root:RNAPulling:Analysis:RampAnalysis:RampAnalysisSettings[%RefoldFit2Fraction]
 	Button ApplyFractionToMI,pos={2,387},size={119,18},proc=RNAAnalysisButtonProc,title="Apply Fractions to MI"
 	Button ApplyFractionToMI,fColor=(61440,61440,61440)
+	Button RedoRFAnalysis,pos={4,454},size={121,18},proc=RNAAnalysisButtonProc,title="RF for MI (Same Fit)"
+	Button RedoRFAnalysis,fColor=(61440,61440,61440)
 EndMacro
 
 Function RNAAnalysisSetVarProc(sva) : SetVariableControl
@@ -1109,8 +1200,9 @@ Function RNAAnalysisButtonProc(ba) : ButtonControl
 					MakeSmoothedRorS(AnalysisSettings[%MasterIndex])
 					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
 				break
-				case "RFAnalysisRampButton":
-				
+				case "RedoRFAnalysis":
+					MeasureRFByMI(AnalysisSettings[%MasterIndex],"TargetTime")
+					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])					
 				break
 				case "RuptureForceAnalysisButton":
 					MeasureRFByMI(AnalysisSettings[%MasterIndex],"BothRuptures")
