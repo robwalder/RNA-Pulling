@@ -1030,7 +1030,7 @@ Function MakeSmoothedRorS(MasterIndex,[TargetDF])
 		DecimationFactor=RSFilterSettings[MasterIndex][1]
 	EndIf
 	If(BoxCarNumber>1)
-		BoxCarAndDecimateFR(RorSForce_Smth,RorSSep_Smth,BoxCarNumber,DecimationFactor)
+		BoxCarAndDecimateFR(RorSForce_Smth,RorSSep_Smth,BoxCarNumber,DecimationFactor,SmoothMode="SavitzkyGolay")
 	EndIF
 
 End
