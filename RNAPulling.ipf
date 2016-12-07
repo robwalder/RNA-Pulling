@@ -1,10 +1,10 @@
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
 #pragma version=2.1
-#include "ForceRamp" version>=2
-#include "WaveDimNote" version>=1
-#include "BetterHamsterFishing" version>=1
-#include "CenteredForcePulls_9" version>=9
-#include "ClosedLoopMotion"
+#include "::Force-Ramp:ForceRamp" version>=2
+#include "::General-Igor-Utilities:WaveDimNote" version>=1
+#include ":BetterHamsterFishing" version>=1
+#include "::Centering:CenteredForcePulls" version>=9
+#include "::Cypher-Utilities:ClosedLoopMotion"
 
 // For version 2.1
 // Moved DoClosedLoopZMotion to ClosedLoopMotion
@@ -88,7 +88,7 @@ Function DoRNAPull(OperationMode,RNAPullingSettings,RNAPullingStrSettings)
 	FastOp ZSensorSetPoint=(ZLVDTSens)*ZSensorSetPointTemp+(StartPosition)
 	Wave Deflection=$DeflectionWaveName
 	Wave ZSensor=$ZSensorWaveName
-	//DoClosedLoopZMotion(ZSensorSetPoint,Deflection,ZSensor,DecimationFactor=DecimationFactor,Callback=Callback)
+	DoClosedLoopZMotion(ZSensorSetPoint,Deflection,ZSensor,DecimationFactor=DecimationFactor,Callback=Callback)
 End
 
 
@@ -299,7 +299,7 @@ Function RNAPullingButtonProc(ba) : ButtonControl
 					RNAPullingSettings[%TOSIteration]=0
 				break
 				case "GoToStartPosition":
-					//MoveToZPositionClosedLoop(RNAPullingSettings[%StartPosition])
+					MoveToZPositionClosedLoop(RNAPullingSettings[%StartPosition])
 				break
 				case "SR1K":
 					RNAPullingSettings[%SamplingRate]=1000			
@@ -339,11 +339,11 @@ End
 
 Window RNAPullingPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(646,505,1038,828) as "RNA Pulling"
+	NewPanel /W=(539,451,931,774) as "RNA Pulling"
 	SetDrawLayer UserBack
 	DrawLine 10,200,382,200
 	DrawLine 170,8,170,199
-	Button LocalRampsButton,pos={11,168},size={87,23},proc=RNAPullingButtonProc,title="Do Local Ramps"
+	Button LocalRampsButton,pos={9,168},size={87,23},proc=RNAPullingButtonProc,title="Do Local Ramps"
 	Button StepsButton,pos={188,118},size={87,23},proc=RNAPullingButtonProc,title="Do Steps"
 	SetVariable RampDistanceSV,pos={11,9},size={144,16},proc=RNAPullingSetVarProc,title="Ramp Distance"
 	SetVariable RampDistanceSV,format="%.1W1Pm"
@@ -375,7 +375,7 @@ Window RNAPullingPanel() : Panel
 	SetVariable DwelllTimeSV,format="%.1W1Ps"
 	SetVariable DwelllTimeSV,limits={0,1000,1},value= root:RNAPulling:RNAPullingSettings[%DwellTime]
 	SetVariable IterationSV,pos={10,241},size={144,16},proc=RNAPullingSetVarProc,title="Iteration"
-	SetVariable IterationSV,limits={1,50000,1000},value= root:RNAPulling:RNAPullingSettings[%Iteration]
+	SetVariable IterationSV,limits={0,50000,1},value= root:RNAPulling:RNAPullingSettings[%Iteration]
 	SetVariable ZStartOffsetSV,pos={9,265},size={144,16},proc=RNAPullingSetVarProc,title="Z Start Position"
 	SetVariable ZStartOffsetSV,format="%.1W1PV"
 	SetVariable ZStartOffsetSV,limits={-10,10,0.001},value= root:RNAPulling:RNAPullingSettings[%StartPosition]
@@ -422,7 +422,7 @@ Function RNATouchOffSurfaceCallback()
 	RNABeep()
 	RNAPullingSettings[%TOSIteration]+=1
 	If(RNAPullingSettings[%ReturnToStartPosition])
-	//	MoveToZPositionClosedLoop(RNAPullingSettings[%StartPosition])
+		MoveToZPositionClosedLoop(RNAPullingSettings[%StartPosition])
 	EndIf
 	
 End

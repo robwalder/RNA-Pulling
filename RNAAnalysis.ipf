@@ -2,6 +2,7 @@
 #include ":ChopRNAPulls"
 #include "::Force-Ramp-Utilities:BoxCarAveraging"
 #include "::Force-Ramp-Utilities:SelectFR"
+#include "::AR-Data:MeasurementTimeline"
 
 
 
@@ -10,8 +11,6 @@ Function InitRNAAnalysis()
 	NewDataFolder/O root:RNAPulling:Analysis
 	NewDataFolder/O root:RNAPulling:Analysis:RampAnalysis
 	
-	// Load waves for first time RNA Pulling program ran
-	LoadAllWavesForIndex(0)
 	
 	// Set RNAAnalysis Parms Path
 	String PathIn=FunctionPath("")
@@ -43,6 +42,8 @@ Function InitRNAAnalysis()
 	Wave Settings=root:RNAPulling:Analysis:Settings
 	Wave/T SettingsStr=root:RNAPulling:Analysis:SettingsStr
  	AnalysisSettings[%NumSteps]=NumStepsOrRamps(Settings,SettingsStr)
+	// Load waves for first time RNA Pulling program ran
+	LoadAllWavesForIndex(0)
 	
 	// Load the first ramp/step on the for the first time the RNA pulling program ran
 	LoadRorS(0,0)
