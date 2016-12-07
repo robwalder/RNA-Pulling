@@ -65,6 +65,7 @@ Function DoRNAPull(OperationMode,RNAPullingSettings,RNAPullingStrSettings)
 	SampleRate=50000/DecimationFactor
 	RNAPullingSettings[%SamplingRate]=SampleRate
 	RNAPullingSettings[%DecimationFactor]=DecimationFactor
+	Variable FastCaptureTotalTime=TotalTime
 
 	strswitch(OperationMode)
 		case "LocalRamp":
@@ -74,6 +75,7 @@ Function DoRNAPull(OperationMode,RNAPullingSettings,RNAPullingStrSettings)
 		case "Steps":
 			RNAPullingStrSettings[%CurrentMode]="Steps"
 			LocalStepWaves(StepDistance,TimePerStep,NumSteps,SampleRate=SampleRate,DeflectionWaveName=DeflectionWaveName,ZSensorWaveName=ZSensorWaveName,ZSetPointWaveName=ZSetPointWaveName)
+			FastCaptureTotalTime=TimePerStep*NumSteps
 		break
 	EndSwitch
  	
@@ -89,7 +91,62 @@ Function DoRNAPull(OperationMode,RNAPullingSettings,RNAPullingStrSettings)
 	Wave Deflection=$DeflectionWaveName
 	Wave ZSensor=$ZSensorWaveName
 	DoClosedLoopZMotion(ZSensorSetPoint,Deflection,ZSensor,DecimationFactor=DecimationFactor,Callback=Callback)
+	DoRNAFastCapture(FastCaptureTotalTime)
+	
 End
+
+Function DoRNAFastCapture(Duration)
+	Variable Duration
+	Variable CaptureError
+	CaptureError+=td_WV("Cypher.Capture.0.rate",2) // Sets sample rate to 5 MHz
+	Make/O/N=0 root:RNAPulling:DefVFast
+	Variable FastCaptureLength=Floor(5e6*Duration)
+	CaptureError+=td_WV("Cypher.Capture.0.length",FastCaptureLength) // Sets number of points for 5 MHz rate and user defined duration time
+	CaptureError+=td_WS("Cypher.Capture.0.trigger","Now") // Starts fast capture NOW!
+	CaptureError+=td_WS("Event.14","Once")
+	
+	If(CaptureError>0)
+		Print "Error in RNA fast capture code: "+num2str(CaptureError)
+	EndIf
+
+
+End
+Function ReadRNAFastCapture([SaveToMemory,SaveToDisk])
+	Variable SaveToMemory,SaveToDisk
+	Wave DefVFast=root:RNAPulling:DefVFast
+	Wave RNAPullingSettings=root:RNAPulling:RNAPullingSettings
+	Wave/T RNAPullingStrSettings=root:RNAPulling:RNAPullingStrSettings
+	String CorrectionIteration=num2str(RNAPullingSettings[%Iteration]-1)
+	If(ParamIsDefault(SaveToMemory))
+		SaveToMemory=0
+	EndIF
+	If(ParamIsDefault(SaveToDisk))
+		SaveToDisk=1
+	EndIF
+
+	String NoteForRNAPullingWaves=StandardCypherWaveNote()+WaveDimValuesToString(RNAPullingSettings)+WaveDimTextToString(RNAPullingStrSettings)
+	note/K DefVFast NoteForRNAPullingWaves
+
+	If(SaveToMemory)
+		Duplicate/O DefVFast, $("root:RNAPulling:SavedData:DefVFast_"+CorrectionIteration)
+	EndIf
+	ControlInfo/W=FishingPanel SaveDiskCB
+	If(SaveToDisk)
+		Print "Saving Fast Capture to Disk"
+		String PathName="C:Users:Asylum User:Desktop:Rob:FastCaptureData:"+DateStringForSave()
+		String SaveName= DateStringForSave()+"_"+TimeStringForSave()+"_"+"RNAPullingFastCapture_"+CorrectionIteration+".pxp"
+		NewPath/O/C/Q/Z FastCapturePath,PathName
+		//Save/C/P=FastCapturePath DefVFast as SaveName
+		SetDataFolder root:RNAPulling
+		SaveData/L=1/Q/P=FastCapturePath SaveName
+		
+	EndIf
+	
+	print "Done Getting Fast Capture Data"
+
+
+End
+
 
 
 
@@ -307,6 +364,12 @@ Function RNAPullingButtonProc(ba) : ButtonControl
 				case "SR50K":
 					RNAPullingSettings[%SamplingRate]=50000
 				break
+				case "RNAReadFastCapture":
+					Wave DefVFast=root:RNAPulling:DefVFast
+					Print "Reading Fast Capture Data"
+					td_readcapture("Cypher.Capture.0",DefVFast,"ReadRNAFastCapture()")
+
+				break
 				
 			EndSwitch
 			
@@ -339,12 +402,14 @@ End
 
 Window RNAPullingPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(539,451,931,774) as "RNA Pulling"
+	NewPanel /W=(550,463,942,830) as "RNA Pulling"
 	SetDrawLayer UserBack
 	DrawLine 10,200,382,200
 	DrawLine 170,8,170,199
 	Button LocalRampsButton,pos={9,168},size={87,23},proc=RNAPullingButtonProc,title="Do Local Ramps"
+	Button LocalRampsButton,fColor=(61440,61440,61440)
 	Button StepsButton,pos={188,118},size={87,23},proc=RNAPullingButtonProc,title="Do Steps"
+	Button StepsButton,fColor=(61440,61440,61440)
 	SetVariable RampDistanceSV,pos={11,9},size={144,16},proc=RNAPullingSetVarProc,title="Ramp Distance"
 	SetVariable RampDistanceSV,format="%.1W1Pm"
 	SetVariable RampDistanceSV,limits={1e-09,3e-06,5e-09},value= root:RNAPulling:RNAPullingSettings[%Distance]
@@ -380,19 +445,29 @@ Window RNAPullingPanel() : Panel
 	SetVariable ZStartOffsetSV,format="%.1W1PV"
 	SetVariable ZStartOffsetSV,limits={-10,10,0.001},value= root:RNAPulling:RNAPullingSettings[%StartPosition]
 	Button DoTouchOffSurface,pos={177,209},size={100,23},proc=RNAPullingButtonProc,title="Touch Off Surface"
+	Button DoTouchOffSurface,fColor=(61440,61440,61440)
 	Button TOSSettings,pos={284,209},size={100,23},proc=RNAPullingButtonProc,title="TOS Settings"
+	Button TOSSettings,fColor=(61440,61440,61440)
 	Button StopRNAPulling,pos={10,208},size={50,23},proc=RNAPullingButtonProc,title="Stop"
+	Button StopRNAPulling,fColor=(61440,61440,61440)
 	Button DisplayRNAPull,pos={66,208},size={100,23},proc=RNAPullingButtonProc,title="Display RNA Pull"
+	Button DisplayRNAPull,fColor=(61440,61440,61440)
 	SetVariable TOSIterationSV,pos={286,239},size={96,16},proc=RNAPullingSetVarProc,title="TOS Iteration"
 	SetVariable TOSIterationSV,limits={1,50000,1},value= root:RNAPulling:RNAPullingSettings[%TOSIteration]
 	Button ResetTOSCounterButton,pos={178,238},size={100,23},proc=RNAPullingButtonProc,title="Reset TOS Counter"
+	Button ResetTOSCounterButton,fColor=(61440,61440,61440)
 	CheckBox TOSAfterRampStep,pos={178,269},size={127,14},proc=RNAPullingCheckProc,title="TOS after Ramp/Steps"
 	CheckBox TOSAfterRampStep,value= 0
 	Button GoToStartPosition,pos={7,287},size={145,24},proc=RNAPullingButtonProc,title="Go To Start Position"
+	Button GoToStartPosition,fColor=(61440,61440,61440)
 	CheckBox ReturnToStartPosition,pos={180,293},size={176,14},proc=RNAPullingCheckProc,title="Return to Start Position after TOS"
 	CheckBox ReturnToStartPosition,value= 0
 	Button SR1K,pos={175,172},size={53,22},proc=RNAPullingButtonProc,title="1 KHz"
+	Button SR1K,fColor=(61440,61440,61440)
 	Button SR50K,pos={232,172},size={53,22},proc=RNAPullingButtonProc,title="50 KHz"
+	Button SR50K,fColor=(61440,61440,61440)
+	Button RNAReadFastCapture,pos={5,320},size={145,24},proc=RNAPullingButtonProc,title="Read Fast Capture"
+	Button RNAReadFastCapture,fColor=(61440,61440,61440)
 EndMacro
 
 Function/S LastForceRamp()
