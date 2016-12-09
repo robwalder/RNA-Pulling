@@ -72,6 +72,32 @@ Function InitRNAPullingOffsets()
 	EndFor
 End
 
+// Use this function on handle (also known as bridge) constructs to estimate the psf as a function of force
+Function EstimatePSFCurrentMI(MasterIndex,StartStep,EndStep,[RNAAnalysisDF])
+	Variable MasterIndex,StartStep,EndStep
+	String RNAAnalysisDF
+	
+	If(ParamIsDefault(RNAAnalysisDF))
+		RNAAnalysisDF="root:RNAPulling:Analysis:"
+	EndIf
+	
+	Wave ForceWave_smth=$RNAAnalysisDF+"ForceRorS_Smth"
+	Variable NumSteps=EndStep-StartStep
+	Make/O/N=(NumSteps) $RNAAnalysisDF+"PSF_Force",$RNAAnalysisDF+"PSF_Width"
+	Wave PSF_Force=$RNAAnalysisDF+"PSF_Force"
+	Wave PSF_Width=$RNAAnalysisDF+"PSF_Width"
+	Variable StepCounter=StartStep
+	For(StepCounter=StartStep;StepCounter<EndStep+1;StepCounter+=1)
+		LoadRorS(MasterIndex,StepCounter)
+		WaveStats/Q ForceWave_smth
+		Variable Counter=StepCounter-StartStep
+		PSF_Force[Counter]=V_avg
+		PSF_Width[Counter]=V_sdev
+	EndFor
+	//Display PSF_Width vs PSF_Force
+      CurveFit/M=2/W=0 line, PSF_Width/X=PSF_Force/D	
+End
+
 Function UpdateNFPFromTimeline()
 	 InitRNAPullingOffsets()
 	 Wave RSForceOffset=root:RNAPulling:Analysis:RSForceOffset
@@ -1040,7 +1066,7 @@ End
 
 Window RNAAnalysisPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(1586,94,1809,782) as "RNA Analysis"
+	NewPanel /W=(1221,111,1444,799) as "RNA Analysis"
 	SetDrawLayer UserBack
 	DrawLine 4,256,189,256
 	DrawLine 4,151,190,151
@@ -1089,6 +1115,12 @@ Window RNAAnalysisPanel() : Panel
 	Button ApplyFractionToMI,fColor=(61440,61440,61440)
 	Button RedoRFAnalysis,pos={4,454},size={121,18},proc=RNAAnalysisButtonProc,title="RF for MI (Same Fit)"
 	Button RedoRFAnalysis,fColor=(61440,61440,61440)
+	Button EstimatePSF,pos={9,573},size={121,18},proc=RNAAnalysisButtonProc,title="Estimate PSF(F)"
+	Button EstimatePSF,fColor=(61440,61440,61440)
+	SetVariable StartStep,pos={9,528},size={132,16},proc=RNAAnalysisSetVarProc,title="Start Step"
+	SetVariable StartStep,value= _NUM:0
+	SetVariable EndStep,pos={10,548},size={131,16},proc=RNAAnalysisSetVarProc,title="End Step"
+	SetVariable EndStep,value= _NUM:15
 EndMacro
 
 Function RNAAnalysisSetVarProc(sva) : SetVariableControl
@@ -1217,9 +1249,14 @@ Function RNAAnalysisButtonProc(ba) : ButtonControl
 					MeasureRFByMI(AnalysisSettings[%MasterIndex],"BothRuptures")
 					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
 					DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
-
 				break			
-				
+				case "EstimatePSF":
+					ControlInfo/W=RNAAnalysisPanel StartStep
+					Variable StartStep=V_value
+					ControlInfo/W=RNAAnalysisPanel EndStep
+					Variable EndStep=V_value
+					EstimatePSFCurrentMI(AnalysisSettings[%MasterIndex],StartStep,EndStep)
+				break
 			EndSwitch
 			
 		
