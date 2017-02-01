@@ -94,7 +94,7 @@ Function EstimatePSFCurrentMI(MasterIndex,StartStep,EndStep,[RNAAnalysisDF])
 		PSF_Force[Counter]=V_avg
 		PSF_Width[Counter]=V_sdev
 	EndFor
-	//Display PSF_Width vs PSF_Force
+	Display PSF_Width vs PSF_Force
       CurveFit/M=2/W=0 line, PSF_Width/X=PSF_Force/D	
 End
 
