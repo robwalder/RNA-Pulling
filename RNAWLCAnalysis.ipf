@@ -14,7 +14,20 @@ Function InitRNAWLCAnalysis([ShowGUI])
 	NewDataFolder/O root:RNAPulling:Analysis:RNAWLCAnalysis:SavedData
 	SetDataFolder root:RNAPulling:Analysis:RNAWLCAnalysis
 	
+	// Set RNAWLCAnalysis Parms Path
+	String PathIn=FunctionPath("")
+	NewPath/Q/O RNAWLCAnalysisParms ParseFilePath(1, PathIn, ":", 1, 0) +"Parms"
 	
+	// Load Settings Wave
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "DNAHandleFitSettings.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "DNAHandleFitSettingsStr.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNACLSettings.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNACLSettingsStr.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAWLCFitSettings.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAWLCFitSettingsStr.ibw"	
+	
+	// Load RNA WLC Panel
+	Execute/Q "RNAWLCPanel()"
 End
 
 Function/Wave WLCFitDNAHandles(Force,Sep,[Lp,Lc,Kmod,Offset,])
@@ -65,3 +78,8 @@ Function/Wave RNACL(Force,RNAExt,[Lp,RNACLName])
 	Wave RNACLWave=$RNACLName
 	Return RNACLWave
 End
+
+Window RNAWLCPanel() : Panel
+	PauseUpdate; Silent 1		// building window...
+	NewPanel /W=(1299,85,1599,285) as "RNA WLC"
+EndMacro
