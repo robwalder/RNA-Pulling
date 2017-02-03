@@ -83,7 +83,7 @@ End
 
 Window RNAWLCPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(1303,177,1804,694) as "RNA WLC"
+	NewPanel /W=(1254,68,1755,585) as "RNA WLC"
 	SetDrawLayer UserBack
 	DrawLine 6,229,444,229
 	SetDrawEnv fsize= 14
@@ -94,45 +94,61 @@ Window RNAWLCPanel() : Panel
 	SetDrawEnv fsize= 14
 	DrawText 5,400,"RNA Contour Length Space"
 	SetVariable DNAHandleForceWaveName,pos={7,35},size={351,16},title="Force Wave"
-	SetVariable DNAHandleForceWaveName,value= root:EquilibriumELR:GetWaveSettingsStr[%EquilibriumWaveName]
+	SetVariable DNAHandleForceWaveName,value= root:RNAPulling:Analysis:RNAWLCAnalysis:DNAHandleFitSettingsStr[%Force]
 	SetVariable StartValue,pos={6,74},size={150,16},title="Start Value"
-	SetVariable StartValue,value= root:EquilibriumELR:GetWaveSettings[%StartX]
+	SetVariable StartValue,value= root:RNAPulling:Analysis:RNAWLCAnalysis:DNAHandleFitSettings[%StartFitX]
 	SetVariable StopValue,pos={7,95},size={150,16},title="Stop Value"
-	SetVariable StopValue,value= root:EquilibriumELR:GetWaveSettings[%EndX]
-	Button FromCursors,pos={164,93},size={72,20},proc=GetWaveFromGraphButtonProc,title="From Cursors"
-	Button FromCursors,fColor=(61440,61440,61440)
+	SetVariable StopValue,value= root:RNAPulling:Analysis:RNAWLCAnalysis:DNAHandleFitSettings[%EndFitX]
+	Button DNAHandleFitLimitsButton,pos={164,93},size={72,20},proc=RNAWLCAnalysisButtonProc,title="From Cursors"
+	Button DNAHandleFitLimitsButton,fColor=(61440,61440,61440)
 	SetVariable DNAHandleSepWaveName,pos={7,54},size={351,16},title="Sep Wave"
-	SetVariable DNAHandleSepWaveName,value= root:EquilibriumELR:GetWaveSettingsStr[%EquilibriumWaveName]
-	Button FromCursors1,pos={366,31},size={72,20},proc=GetWaveFromGraphButtonProc,title="From Cursors"
-	Button FromCursors1,fColor=(61440,61440,61440)
-	Button FromCursors2,pos={366,53},size={72,20},proc=GetWaveFromGraphButtonProc,title="From Cursors"
-	Button FromCursors2,fColor=(61440,61440,61440)
+	SetVariable DNAHandleSepWaveName,value= root:RNAPulling:Analysis:RNAWLCAnalysis:DNAHandleFitSettingsStr[%Ext]
+	Button DNAHandleForceButton,pos={366,31},size={72,20},proc=RNAWLCAnalysisButtonProc,title="From Cursors"
+	Button DNAHandleForceButton,fColor=(61440,61440,61440)
+	Button DNAHandleSepButton,pos={366,53},size={72,20},proc=RNAWLCAnalysisButtonProc,title="From Cursors"
+	Button DNAHandleSepButton,fColor=(61440,61440,61440)
 	SetVariable DNAHandleForceWaveName1,pos={9,261},size={351,16},title="Force Wave"
-	SetVariable DNAHandleForceWaveName1,value= root:EquilibriumELR:GetWaveSettingsStr[%EquilibriumWaveName]
+	SetVariable DNAHandleForceWaveName1,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettingsStr[%Force]
 	SetVariable StartValue1,pos={8,300},size={150,16},title="Start Value"
-	SetVariable StartValue1,value= root:EquilibriumELR:GetWaveSettings[%StartX]
+	SetVariable StartValue1,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettings[%StartFitX]
 	SetVariable StopValue1,pos={9,321},size={150,16},title="Stop Value"
-	SetVariable StopValue1,value= root:EquilibriumELR:GetWaveSettings[%EndX]
-	Button FromCursors3,pos={166,319},size={72,20},proc=GetWaveFromGraphButtonProc,title="From Cursors"
-	Button FromCursors3,fColor=(61440,61440,61440)
+	SetVariable StopValue1,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettings[%EndFitX]
+	Button RNAFitRangeButton,pos={166,319},size={72,20},proc=RNAWLCAnalysisButtonProc,title="From Cursors"
+	Button RNAFitRangeButton,fColor=(61440,61440,61440)
 	SetVariable DNAHandleSepWaveName1,pos={9,280},size={351,16},title="Sep Wave"
-	SetVariable DNAHandleSepWaveName1,value= root:EquilibriumELR:GetWaveSettingsStr[%EquilibriumWaveName]
-	Button FromCursors4,pos={368,257},size={72,20},proc=GetWaveFromGraphButtonProc,title="From Cursors"
-	Button FromCursors4,fColor=(61440,61440,61440)
-	Button FromCursors5,pos={368,279},size={72,20},proc=GetWaveFromGraphButtonProc,title="From Cursors"
-	Button FromCursors5,fColor=(61440,61440,61440)
+	SetVariable DNAHandleSepWaveName1,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettingsStr[%Ext]
+	Button RNAForceButton,pos={368,257},size={72,20},proc=RNAWLCAnalysisButtonProc,title="From Cursors"
+	Button RNAForceButton,fColor=(61440,61440,61440)
+	Button RNASepButton,pos={368,279},size={72,20},proc=RNAWLCAnalysisButtonProc,title="From Cursors"
+	Button RNASepButton,fColor=(61440,61440,61440)
 	SetVariable RNAFitIndex,pos={8,352},size={150,16},title="RNA Fit Index"
-	SetVariable RNAFitIndex,value= root:EquilibriumELR:GetWaveSettings[%EndX]
-	Button NewRNAFitButton,pos={168,350},size={72,20},proc=GetWaveFromGraphButtonProc,title="New RNA Fit"
+	SetVariable RNAFitIndex,value= _NUM:0
+	Button NewRNAFitButton,pos={168,350},size={72,20},proc=RNAWLCAnalysisButtonProc,title="New RNA Fit"
 	Button NewRNAFitButton,fColor=(61440,61440,61440)
-	Button DeleteRNAFitButton,pos={252,350},size={87,21},proc=GetWaveFromGraphButtonProc,title="Delete RNA Fit"
+	Button DeleteRNAFitButton,pos={252,350},size={87,21},proc=RNAWLCAnalysisButtonProc,title="Delete RNA Fit"
 	Button DeleteRNAFitButton,fColor=(61440,61440,61440)
 	SetVariable DNAHandleForceWaveName2,pos={4,409},size={351,16},title="Force Wave"
-	SetVariable DNAHandleForceWaveName2,value= root:EquilibriumELR:GetWaveSettingsStr[%EquilibriumWaveName]
+	SetVariable DNAHandleForceWaveName2,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr[%Force]
 	SetVariable RNAExtWave,pos={4,428},size={351,16},title="RNA Ext"
-	SetVariable RNAExtWave,value= root:EquilibriumELR:GetWaveSettingsStr[%EquilibriumWaveName]
-	Button FromCursors6,pos={363,405},size={72,20},proc=GetWaveFromGraphButtonProc,title="From Cursors"
-	Button FromCursors6,fColor=(61440,61440,61440)
+	SetVariable RNAExtWave,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr[%RNAExt]
+	Button RNACLForceButton,pos={363,405},size={72,20},proc=RNAWLCAnalysisButtonProc,title="From Cursors"
+	Button RNACLForceButton,fColor=(61440,61440,61440)
 	SetVariable RNACLWave,pos={4,449},size={351,16},title="RNA CL"
-	SetVariable RNACLWave,value= root:EquilibriumELR:GetWaveSettingsStr[%EquilibriumWaveName]
+	SetVariable RNACLWave,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr[%RNACL]
+	Button RNACLSepButton,pos={363,427},size={72,20},proc=RNAWLCAnalysisButtonProc,title="From Cursors"
+	Button RNACLSepButton,fColor=(61440,61440,61440)
 EndMacro
+
+Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
+	STRUCT WMButtonAction &ba
+
+	switch( ba.eventCode )
+		case 2: // mouse up
+			// click code here
+			break
+		case -1: // control being killed
+			break
+	endswitch
+
+	return 0
+End
