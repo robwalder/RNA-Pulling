@@ -85,10 +85,10 @@ Window RNAWLCPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
 	NewPanel /W=(1254,68,1723,703) as "RNA WLC"
 	SetDrawLayer UserBack
-	DrawLine 6,229,444,229
+	DrawLine 6,234,444,234
 	SetDrawEnv fsize= 14
 	DrawText 9,26,"DNA Handles WLC Fit"
-	DrawLine 14,485,452,485
+	DrawLine 14,491,452,491
 	SetDrawEnv fsize= 14
 	DrawText 10,252,"RNA WLC Fit"
 	SetDrawEnv fsize= 14
@@ -212,6 +212,12 @@ Window RNAWLCPanel() : Panel
 	SetVariable RNAWLCLpGuess,pos={152,384},size={112,16},title="Lp Guess"
 	SetVariable RNAWLCLpGuess,format="%.1W1Pm"
 	SetVariable RNAWLCLpGuess,limits={0,inf,1e-09},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettings[%LpGuess_RNA]
+	Button DoDNAHandleFit,pos={161,211},size={105,20},proc=RNAWLCAnalysisButtonProc,title="Do DNA Handle Fit"
+	Button DoDNAHandleFit,fColor=(61440,61440,61440)
+	Button DoRNAFit,pos={153,467},size={105,20},proc=RNAWLCAnalysisButtonProc,title="Do RNA Fit"
+	Button DoRNAFit,fColor=(61440,61440,61440)
+	Button DoRNACL,pos={12,577},size={117,20},proc=RNAWLCAnalysisButtonProc,title="Do RNA Lc Transform"
+	Button DoRNACL,fColor=(61440,61440,61440)
 EndMacro
 
 Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
