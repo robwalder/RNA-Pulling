@@ -222,10 +222,44 @@ EndMacro
 
 Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
-
+	String ControlName=ba.ctrlname
+	
+	Wave DNAHandleFitSettings=root:RNAPulling:Analysis:RNAWLCAnalysis:DNAHandleFitSettings
+	Wave DNAHandleFitSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:DNAHandleFitSettingsStr
+	Wave RNAWLCFitSettings=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettings
+	Wave RNAWLCFitSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettingsStr
+	Wave RNACLSettings=root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettings
+	Wave RNACLSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr
+	
 	switch( ba.eventCode )
 		case 2: // mouse up
 			// click code here
+				StrSwitch(ControlName)
+					case "DoDNAHandleFit":
+				
+					break
+					case "DoRNAFit":
+					
+					break
+					case "DoRNACL":
+				
+					break
+					case "NewRNAFitButton":
+					break
+					case "DeleteRNAFitButton":
+					break
+					case "DNAHandleForceButton":
+					case "DNAHandleSepButton":
+					case "DNAHandleFitLimitsButton":
+					case "RNAForceButton":
+					case "RNASepButton":
+					case "RNAFitRangeButton":
+					case "RNACLForceButton":
+					case "RNACLSepButton":
+						// Insert code to handle all the "from cursors" buttons.
+					break
+					
+				EndSwitch
 			break
 		case -1: // control being killed
 			break
@@ -236,10 +270,41 @@ End
 
 Function RNAWLCAnalysisCheckProc(cba) : CheckBoxControl
 	STRUCT WMCheckboxAction &cba
+	Wave DNAHandleFitSettings=root:RNAPulling:Analysis:RNAWLCAnalysis:DNAHandleFitSettings
+	Wave RNAWLCFitSettings=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettings
+	String ControlName=cba.ctrlname
 
 	switch( cba.eventCode )
 		case 2: // mouse up
 			Variable checked = cba.checked
+				StrSwitch(ControlName)
+					case "DNAHandleHoldLp":
+						DNAHandleFitSettings[%HoldLp_DNA]=checked
+					break
+					case "DNAHandleHoldLc":
+						DNAHandleFitSettings[%HoldLc_DNA]=checked
+					break
+					case "DNAHandleHoldKmod":
+						DNAHandleFitSettings[%HoldKmod_DNA]=checked
+					break
+					case "DNAHandleHoldOffset":
+						DNAHandleFitSettings[%HoldOffset_DNA]=checked
+					break
+					case "RNAWLCHoldLp":
+						RNAWLCFitSettings[%HoldLp_RNA]=checked
+					break
+					case "RNAWLCHoldLc":
+						RNAWLCFitSettings[%HoldLc_RNA]=checked
+					break
+					case "RNAWLCHoldKmod":
+						RNAWLCFitSettings[%HoldKmod_RNA]=checked
+					break
+					case "RNAWLCHoldOffset":
+						RNAWLCFitSettings[%HoldOffset_RNA]=checked
+					break
+				
+				EndSwitch
+			
 			break
 		case -1: // control being killed
 			break
