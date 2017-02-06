@@ -225,11 +225,11 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 	String ControlName=ba.ctrlname
 	
 	Wave DNAHandleFitSettings=root:RNAPulling:Analysis:RNAWLCAnalysis:DNAHandleFitSettings
-	Wave DNAHandleFitSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:DNAHandleFitSettingsStr
+	Wave/T DNAHandleFitSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:DNAHandleFitSettingsStr
 	Wave RNAWLCFitSettings=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettings
-	Wave RNAWLCFitSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettingsStr
+	Wave/T RNAWLCFitSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettingsStr
 	Wave RNACLSettings=root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettings
-	Wave RNACLSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr
+	Wave/T RNACLSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr
 	
 	switch( ba.eventCode )
 		case 2: // mouse up
@@ -256,7 +256,43 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 					case "RNAFitRangeButton":
 					case "RNACLForceButton":
 					case "RNACLSepButton":
-						// Insert code to handle all the "from cursors" buttons.
+						// Get x values and wave name for wave with cursors on it..
+						Variable StartX=xcsr(A)
+						Variable EndX=xcsr(B)
+						String TargetWaveName=GetWavesDataFolder(CsrWaveRef(A),2)
+						String TargetXWaveName=GetWavesDataFolder(CsrXWaveRef(A),2)
+						StrSwitch(ControlName)
+							case "DNAHandleForceButton":
+								DNAHandleFitSettingsStr[%Force]=TargetWaveName
+								DNAHandleFitSettingsStr[%Ext]=TargetXWaveName								
+							break
+							case "DNAHandleSepButton":
+								DNAHandleFitSettingsStr[%Ext]=TargetWaveName
+							break
+							case "DNAHandleFitLimitsButton":
+								DNAHandleFitSettings[%StartFitX]=StartX
+								DNAHandleFitSettings[%EndFitX]=EndX
+							break
+							case "RNAForceButton":
+								RNAWLCFitSettingsStr[%Force]=TargetWaveName
+								RNAWLCFitSettingsStr[%Ext]=TargetXWaveName								
+							break
+							case "RNASepButton":
+								RNAWLCFitSettingsStr[%Ext]=TargetWaveName								
+							break
+							case "RNAFitRangeButton":
+								RNAWLCFitSettings[%StartFitX]=StartX
+								RNAWLCFitSettings[%EndFitX]=EndX
+							break
+							case "RNACLForceButton":
+								RNACLSettingsStr[%Force]=TargetWaveName
+								RNACLSettingsStr[%RNAExt]=TargetXWaveName								
+							break
+							case "RNACLSepButton":
+								RNACLSettingsStr[%RNAExt]=TargetWaveName														
+							break
+						
+						EndSwitch
 					break
 					
 				EndSwitch
