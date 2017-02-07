@@ -265,8 +265,35 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						WLCGuide("ExtensibleWLC",DNAHandleFitSettings[%Lc_DNA],DNAHandleFitSettings[%Lp_DNA],ForceWaveName="DNAHandleForceGuide",SepWaveName="DNAHandleSepGuide",Offset=DNAHandleFitSettings[%Offset_DNA],StretchModulus=DNAHandleFitSettings[%Kmod_DNA],MaxForce=30e-12)
 
 					break
-					case "DoRNAFit":
+					case "InitRNAFit":
+						Make/O/N=4 DNAWLC_Coeff
+						Wave DNAWLC_Coeff=DNAWLC_Coeff
+						DNAWLC_Coeff[0]=DNAHandleFitSettings[%Lp_DNA]
+						DNAWLC_Coeff[1]=DNAHandleFitSettings[%Lc_DNA]
+						DNAWLC_Coeff[2]=DNAHandleFitSettings[%Kmod_DNA]
+						DNAWLC_Coeff[3]=DNAHandleFitSettings[%Offset_DNA]
+						Wave Ext=$RNAWLCFitSettingsStr[%Ext]
+						Wave Force=$RNAWLCFitSettingsStr[%Force]
+						Duplicate/O Force, $RNAWLCFitSettingsStr[%DNAExt]
+						Wave DNAExtension=$RNAWLCFitSettingsStr[%DNAExt]
+						DNAExtension=ExtensibleWLCHighForce(DNAWLC_Coeff,Force[p])
+						
+						MakeRNAExt(Force, Ext, DNAExtension,RNAExtName=RNAWLCFitSettingsStr[%RNAExt])
 					
+					break
+					case "DoRNAFit":
+						Wave RNAExtension=$RNAWLCFitSettingsStr[%RNAExt]
+						Wave RNAForce=$RNAWLCFitSettingsStr[%Force]
+						Duplicate/O/R=(RNAWLCFitSettings[%StartFitX],RNAWLCFitSettings[%EndFitX]) RNAExtension, RNAExtensionSegment
+						Duplicate/O/R=(RNAWLCFitSettings[%StartFitX],RNAWLCFitSettings[%EndFitX]) RNAForce, RNAForceSegment
+
+						WLCFit(RNAForceSegment,RNAExtensionSegment,"WLC",CLGuess=RNAWLCFitSettings[%LcGuess_RNA],PLGuess=RNAWLCFitSettings[%LpGuess_RNA],StretchModulus=RNAWLCFitSettings[%KMod_RNA],Offset=RNAWLCFitSettings[%OffsetGuess_RNA],HoldPL=RNAWLCFitSettings[%HoldLp_RNA],HoldCL=RNAWLCFitSettings[%HoldLc_RNA],HoldStretchModulus=RNAWLCFitSettings[%HoldKmod_RNA],HoldOffset=RNAWLCFitSettings[%HoldOffset_RNA])
+						Wave WLC_Coeff
+						RNAWLCFitSettings[%Lc_RNA]=WLC_Coeff[1]
+						RNAWLCFitSettings[%Lp_RNA]=WLC_Coeff[0]
+						
+						WLCGuide("WLC",RNAWLCFitSettings[%Lc_RNA],RNAWLCFitSettings[%Lp_RNA],ForceWaveName="RNAForceGuide",SepWaveName="RNASepGuide",Offset=RNAWLCFitSettings[%Offset_RNA],StretchModulus=RNAWLCFitSettings[%Kmod_RNA],MaxForce=30e-12)
+						
 					break
 					case "DoRNACL":
 						Make/O/N=4 DNAWLC_Coeff
