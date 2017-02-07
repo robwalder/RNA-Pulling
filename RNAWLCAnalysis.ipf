@@ -94,7 +94,7 @@ End
 
 Window RNAWLCPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(1254,68,1723,703) as "RNA WLC"
+	NewPanel /W=(1239,70,1708,736) as "RNA WLC"
 	SetDrawLayer UserBack
 	DrawLine 6,234,444,234
 	SetDrawEnv fsize= 14
@@ -144,11 +144,11 @@ Window RNAWLCPanel() : Panel
 	Button DeleteRNAFitButton,fColor=(61440,61440,61440)
 	SetVariable DNAHandleForceWaveName2,pos={12,518},size={351,16},title="Force Wave"
 	SetVariable DNAHandleForceWaveName2,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr[%Force]
-	SetVariable RNAExtWave,pos={12,537},size={351,16},title="RNA Ext"
+	SetVariable RNAExtWave,pos={13,578},size={351,16},title="RNA Ext"
 	SetVariable RNAExtWave,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr[%RNAExt]
 	Button RNACLForceButton,pos={371,514},size={72,20},proc=RNAWLCAnalysisButtonProc,title="From Cursors"
 	Button RNACLForceButton,fColor=(61440,61440,61440)
-	SetVariable RNACLWave,pos={12,558},size={351,16},title="RNA CL"
+	SetVariable RNACLWave,pos={13,599},size={351,16},title="RNA CL"
 	SetVariable RNACLWave,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr[%RNACL]
 	Button RNACLSepButton,pos={371,536},size={72,20},proc=RNAWLCAnalysisButtonProc,title="From Cursors"
 	Button RNACLSepButton,fColor=(61440,61440,61440)
@@ -203,7 +203,7 @@ Window RNAWLCPanel() : Panel
 	CheckBox RNAWLCHoldLp,pos={290,385},size={40,14},proc=RNAWLCAnalysisCheckProc,title="Hold"
 	CheckBox RNAWLCHoldLp,value= 1
 	CheckBox RNAWLCHoldLc,pos={290,405},size={40,14},proc=RNAWLCAnalysisCheckProc,title="Hold"
-	CheckBox RNAWLCHoldLc,value= 0
+	CheckBox RNAWLCHoldLc,value= 1
 	CheckBox RNAWLCHoldKmod,pos={290,426},size={40,14},proc=RNAWLCAnalysisCheckProc,title="Hold"
 	CheckBox RNAWLCHoldKmod,value= 1
 	CheckBox RNAWLCHoldOffset,pos={290,447},size={40,14},proc=RNAWLCAnalysisCheckProc,title="Hold"
@@ -227,10 +227,16 @@ Window RNAWLCPanel() : Panel
 	Button DoDNAHandleFit,fColor=(61440,61440,61440)
 	Button DoRNAFit,pos={153,467},size={105,20},proc=RNAWLCAnalysisButtonProc,title="Do RNA Fit"
 	Button DoRNAFit,fColor=(61440,61440,61440)
-	Button DoRNACL,pos={12,577},size={117,20},proc=RNAWLCAnalysisButtonProc,title="Do RNA Lc Transform"
+	Button DoRNACL,pos={13,618},size={117,20},proc=RNAWLCAnalysisButtonProc,title="Do RNA Lc Transform"
 	Button DoRNACL,fColor=(61440,61440,61440)
+	SetVariable RNACL_DNAExt,pos={13,559},size={351,16},title="DNA Ext"
+	SetVariable RNACL_DNAExt,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr[%DNAExt]
+	SetVariable RNACL_Ext,pos={12,537},size={351,16},title="Ext Wave"
+	SetVariable RNACL_Ext,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr[%Ext]
+	Button InitRNAFit,pos={41,468},size={105,20},proc=RNAWLCAnalysisButtonProc,title="Init RNA Fit"
+	Button InitRNAFit,fColor=(61440,61440,61440)
 EndMacro
-
+  
 Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
 	String ControlName=ba.ctrlname
