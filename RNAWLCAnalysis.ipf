@@ -87,8 +87,9 @@ Function/Wave MakeRNALcWave(Force,RNAExt,[Lp,RNACLName])
 	If(ParamIsDefault(RNACLName))
 		RNACLName="root:RNACLAnalysis:RNACL"
 	EndIf
-	MakeContourLengthWave(Force,RNAExt,PersistenceLength=Lp,CLName=RNACLName,MoleculeType="None")
+	MakeContourLengthWave(Force,RNAExt,PersistenceLength=Lp,CLName=RNACLName,MoleculeType="None",Threshold=5e-12)
 	Wave RNACLWave=$RNACLName
+	RNACLWave=RNACLWave[p]<-2e-9||numtype(RNACLWave[p])==2?-2e-9:RNACLWave[p]
 	Return RNACLWave
 End
 
@@ -257,7 +258,7 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						Wave DNAHandleExt=$DNAHandleFitSettingsStr[%Ext]
 						Duplicate/O/R=(DNAHandleFitSettings[%StartFitX],DNAHandleFitSettings[%EndFitX]) DNAHandleForce, DNAHandleForceSegment
 						Duplicate/O/R=(DNAHandleFitSettings[%StartFitX],DNAHandleFitSettings[%EndFitX]) DNAHandleExt, DNAHandleExtSegment
-						WLCFit(DNAHandleForceSegment,DNAHandleExtSegment,"ExtensibleWLC",CLGuess=DNAHandleFitSettings[%LcGuess_DNA],PLGuess=DNAHandleFitSettings[%LpGuess_DNA],StretchModulus=DNAHandleFitSettings[%KMod_DNA],Offset=DNAHandleFitSettings[%OffsetGuess_DNA],HoldPL=DNAHandleFitSettings[%HoldLp_DNA],HoldCL=DNAHandleFitSettings[%HoldLc_DNA],HoldStretchModulus=DNAHandleFitSettings[%HoldKmod_DNA],HoldOffset=DNAHandleFitSettings[%HoldOffset_DNA])
+						WLCFit(DNAHandleForceSegment,DNAHandleExtSegment,"ExtensibleWLC",CLGuess=DNAHandleFitSettings[%LcGuess_DNA],PLGuess=DNAHandleFitSettings[%LpGuess_DNA],StretchModulus=DNAHandleFitSettings[%KModGuess_DNA],Offset=DNAHandleFitSettings[%OffsetGuess_DNA],HoldPL=DNAHandleFitSettings[%HoldLp_DNA],HoldCL=DNAHandleFitSettings[%HoldLc_DNA],HoldStretchModulus=DNAHandleFitSettings[%HoldKmod_DNA],HoldOffset=DNAHandleFitSettings[%HoldOffset_DNA])
 						Wave WLC_Coeff
 						DNAHandleFitSettings[%Lc_DNA]=WLC_Coeff[1]
 						DNAHandleFitSettings[%Lp_DNA]=WLC_Coeff[0]
@@ -313,7 +314,7 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						Duplicate/O Force, $RNACLSettingsStr[%DNAExt]
 						Wave DNAExtension=$RNACLSettingsStr[%DNAExt]
 						DNAExtension=ExtensibleWLCHighForce(DNAWLC_Coeff,Force[p])
-						
+						DNAExtension=DNAExtension[p]<17e-9||numtype(DNAExtension[p])==2?17e-9:DNAExtension[p]
 						Wave RNAExtension=MakeRNAExt(Force, Ext, DNAExtension,RNAExtName=RNACLSettingsStr[%RNAExt])
 						MakeRNALcWave(Force,RNAExtension,Lp=RNACLSettings[%Lp_RNA],RNACLName=RNACLSettingsStr[%RNACL])
 						
