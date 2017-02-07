@@ -52,21 +52,32 @@ Function/Wave WLCFitDNAHandles(Force,Sep,[Lp,Lc,Kmod,Offset])
 	Return WLC_Coeff
 End
 
-Function/Wave DNAHandleExt(Extension,WLC_Coeffs)
-	Wave Extension,WLC_Coeffs
-	Duplicate/O Extension, DNAExt
-	DNAExt=ExtensibleWLCHighForce(WLC_Coeffs,x)
+Function/Wave MakeDNAHandleExt(Force,WLC_Coeffs,[DNAExtName])
+	Wave Force,WLC_Coeffs
+	String DNAExtName
+	If(ParamIsDefault(DNAExtName))
+		DNAExtName="root:RNACLAnalysis:DNAExt"
+	EndIf
+
+	Duplicate/O Force, $DNAExtName
+	Wave DNAExt=$DNAExtName
+	DNAExt=ExtensibleWLCHighForce(WLC_Coeffs,Force[p])
 	Return DNAExt
 End
 
-Function/Wave RNAExt(Force, Ext, DNAExt)
+Function/Wave MakeRNAExt(Force, Ext, DNAExt,[RNAExtName])
+
 	Wave Force,Ext, DNAExt
-	Duplicate Ext, RNAExt
-	RNAExt=Ext[p]-DNAExt(Force[p])
-	Return RNAExt
+	String RNAExtName
+	If(ParamIsDefault(RNAExtName))
+		RNAExtName="root:RNACLAnalysis:RNAExt"
+	EndIf
+	Duplicate/O Ext, RNAExtension
+	RNAExtension=Ext-DNAExt
+	Return RNAExtension
 End
 
-Function/Wave RNACL(Force,RNAExt,[Lp,RNACLName])
+Function/Wave MakeRNALcWave(Force,RNAExt,[Lp,RNACLName])
 	Wave Force,RNAExt
 	Variable Lp
 	String RNACLName
@@ -236,13 +247,43 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 			// click code here
 				StrSwitch(ControlName)
 					case "DoDNAHandleFit":
-				
+						Wave DNAHandleForce=$DNAHandleFitSettingsStr[%Force]
+						Wave DNAHandleExt=$DNAHandleFitSettingsStr[%Ext]
+						Duplicate/O/R=(DNAHandleFitSettings[%StartFitX],DNAHandleFitSettings[%EndFitX]) DNAHandleForce, DNAHandleForceSegment
+						Duplicate/O/R=(DNAHandleFitSettings[%StartFitX],DNAHandleFitSettings[%EndFitX]) DNAHandleExt, DNAHandleExtSegment
+						WLCFit(DNAHandleForceSegment,DNAHandleExtSegment,"ExtensibleWLC",CLGuess=DNAHandleFitSettings[%LcGuess_DNA],PLGuess=DNAHandleFitSettings[%LpGuess_DNA],StretchModulus=DNAHandleFitSettings[%KMod_DNA],Offset=DNAHandleFitSettings[%OffsetGuess_DNA],HoldPL=DNAHandleFitSettings[%HoldLp_DNA],HoldCL=DNAHandleFitSettings[%HoldLc_DNA],HoldStretchModulus=DNAHandleFitSettings[%HoldKmod_DNA],HoldOffset=DNAHandleFitSettings[%HoldOffset_DNA])
+						Wave WLC_Coeff
+						DNAHandleFitSettings[%Lc_DNA]=WLC_Coeff[1]
+						DNAHandleFitSettings[%Lp_DNA]=WLC_Coeff[0]
+						DNAHandleFitSettings[%Kmod_DNA]=WLC_Coeff[2]
+						DNAHandleFitSettings[%Offset_DNA]=WLC_Coeff[3]
+						RNAWLCFitSettings[%Lc_DNA]=WLC_Coeff[1]
+						RNAWLCFitSettings[%Lp_DNA]=WLC_Coeff[0]
+						RNAWLCFitSettings[%Kmod_DNA]=WLC_Coeff[2]
+						RNAWLCFitSettings[%Offset_DNA]=WLC_Coeff[3]
+						
+						WLCGuide("ExtensibleWLC",DNAHandleFitSettings[%Lc_DNA],DNAHandleFitSettings[%Lp_DNA],ForceWaveName="DNAHandleForceGuide",SepWaveName="DNAHandleSepGuide",Offset=DNAHandleFitSettings[%Offset_DNA],StretchModulus=DNAHandleFitSettings[%Kmod_DNA],MaxForce=30e-12)
+
 					break
 					case "DoRNAFit":
 					
 					break
 					case "DoRNACL":
-				
+						Make/O/N=4 DNAWLC_Coeff
+						Wave DNAWLC_Coeff=DNAWLC_Coeff
+						DNAWLC_Coeff[0]=DNAHandleFitSettings[%Lp_DNA]
+						DNAWLC_Coeff[1]=DNAHandleFitSettings[%Lc_DNA]
+						DNAWLC_Coeff[2]=DNAHandleFitSettings[%Kmod_DNA]
+						DNAWLC_Coeff[3]=DNAHandleFitSettings[%Offset_DNA]
+						Wave Ext=$RNACLSettingsStr[%Ext]
+						Wave Force=$RNACLSettingsStr[%Force]
+						Duplicate/O Force, $RNACLSettingsStr[%DNAExt]
+						Wave DNAExtension=$RNACLSettingsStr[%DNAExt]
+						DNAExtension=ExtensibleWLCHighForce(DNAWLC_Coeff,Force[p])
+						
+						Wave RNAExtension=MakeRNAExt(Force, Ext, DNAExtension,RNAExtName=RNACLSettingsStr[%RNAExt])
+						MakeRNALcWave(Force,RNAExtension,Lp=RNACLSettings[%Lp_RNA],RNACLName=RNACLSettingsStr[%RNACL])
+						
 					break
 					case "NewRNAFitButton":
 					break
@@ -286,10 +327,10 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 							break
 							case "RNACLForceButton":
 								RNACLSettingsStr[%Force]=TargetWaveName
-								RNACLSettingsStr[%RNAExt]=TargetXWaveName								
+								RNACLSettingsStr[%Ext]=TargetXWaveName								
 							break
 							case "RNACLSepButton":
-								RNACLSettingsStr[%RNAExt]=TargetWaveName														
+								RNACLSettingsStr[%Ext]=TargetWaveName														
 							break
 						
 						EndSwitch
