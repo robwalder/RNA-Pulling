@@ -108,7 +108,7 @@ End
 
 Window RNAWLCPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(1239,70,1708,736) as "RNA WLC"
+	NewPanel /W=(1151,67,1620,733) as "RNA WLC"
 	SetDrawLayer UserBack
 	DrawLine 6,234,444,234
 	SetDrawEnv fsize= 14
@@ -249,6 +249,9 @@ Window RNAWLCPanel() : Panel
 	SetVariable RNACL_Ext,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr[%Ext]
 	Button InitRNAFit,pos={41,468},size={105,20},proc=RNAWLCAnalysisButtonProc,title="Init RNA Fit"
 	Button InitRNAFit,fColor=(61440,61440,61440)
+	SetVariable RNACL_LPSV,pos={368,565},size={98,16},title="RNA Lp"
+	SetVariable RNACL_LPSV,format="%.1W1Pm"
+	SetVariable RNACL_LPSV,limits={0,inf,1e-09},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettings[%Lp_RNA]
 EndMacro
   
 Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
