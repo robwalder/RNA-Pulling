@@ -52,16 +52,24 @@ Function/Wave WLCFitDNAHandles(Force,Sep,[Lp,Lc,Kmod,Offset])
 	Return WLC_Coeff
 End
 
-Function/Wave MakeDNAHandleExt(Force,WLC_Coeffs,[DNAExtName])
+Function/Wave MakeDNAHandleExt(Force,WLC_Coeffs,[DNAExt_LowerBound,DNAExtName])
 	Wave Force,WLC_Coeffs
+	Variable DNAExt_LowerBound
 	String DNAExtName
 	If(ParamIsDefault(DNAExtName))
 		DNAExtName="root:RNACLAnalysis:DNAExt"
+	EndIf
+	If(ParamIsDefault(DNAExt_LowerBound))
+		DNAExt_LowerBound=0
 	EndIf
 
 	Duplicate/O Force, $DNAExtName
 	Wave DNAExt=$DNAExtName
 	DNAExt=ExtensibleWLCHighForce(WLC_Coeffs,Force[p])
+	// If contour length is less than a certain lowerbound or nan then set it equal to the lower bound.
+	// This prevents DNA extension from blowing up at lower force.	
+	DNAExt=DNAExt[p]<DNAExt_LowerBound||numtype(DNAExt[p])==2?DNAExt_LowerBound : DNAExt[p]
+	
 	Return DNAExt
 End
 
@@ -77,11 +85,14 @@ Function/Wave MakeRNAExt(Force, Ext, DNAExt,[RNAExtName])
 	Return RNAExtension
 End
 
-Function/Wave MakeRNALcWave(Force,RNAExt,[Lp,RNACLName])
+Function/Wave MakeRNALcWave(Force,RNAExt,[Lp,RNACL_LowerBound,RNACLName])
 	Wave Force,RNAExt
-	Variable Lp
+	Variable Lp,RNACL_LowerBound
 	String RNACLName
-	If(ParamIsDefault(Lp)) // Default RNA persistence length is 1nm
+	If(ParamIsDefault(RNACL_LowerBound)) // Default lower bound of the contour length  is -2 nm
+		RNACL_LowerBound=-2e-9
+	EndIf
+	If(ParamIsDefault(Lp)) // Default RNA persistence length is 1 nm
 		Lp=1e-9
 	EndIf
 	If(ParamIsDefault(RNACLName))
@@ -89,7 +100,9 @@ Function/Wave MakeRNALcWave(Force,RNAExt,[Lp,RNACLName])
 	EndIf
 	MakeContourLengthWave(Force,RNAExt,PersistenceLength=Lp,CLName=RNACLName,MoleculeType="None",Threshold=5e-12)
 	Wave RNACLWave=$RNACLName
-	RNACLWave=RNACLWave[p]<-2e-9||numtype(RNACLWave[p])==2?-2e-9:RNACLWave[p]
+	// If contour length is less than a certain lowerbound or nan then set it equal to the lower bound.
+	// This prevents RNACL from blowing up at lower force.
+	RNACLWave=RNACLWave[p]<RNACL_LowerBound||numtype(RNACLWave[p])==2?RNACL_LowerBound : RNACLWave[p]
 	Return RNACLWave
 End
 
@@ -282,8 +295,7 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						Wave Ext=$RNAWLCFitSettingsStr[%Ext]
 						Wave Force=$RNAWLCFitSettingsStr[%Force]
 						Duplicate/O Force, $RNAWLCFitSettingsStr[%DNAExt]
-						Wave DNAExtension=$RNAWLCFitSettingsStr[%DNAExt]
-						DNAExtension=ExtensibleWLCHighForce(DNAWLC_Coeff,Force[p])
+						Wave DNAExtension=MakeDNAHandleExt(Force,DNAWLC_Coeff,DNAExtName=RNAWLCFitSettingsStr[%DNAExt],DNAExt_LowerBound=WaveMin(Ext))
 						
 						MakeRNAExt(Force, Ext, DNAExtension,RNAExtName=RNAWLCFitSettingsStr[%RNAExt])
 					
@@ -312,9 +324,7 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						Wave Ext=$RNACLSettingsStr[%Ext]
 						Wave Force=$RNACLSettingsStr[%Force]
 						Duplicate/O Force, $RNACLSettingsStr[%DNAExt]
-						Wave DNAExtension=$RNACLSettingsStr[%DNAExt]
-						DNAExtension=ExtensibleWLCHighForce(DNAWLC_Coeff,Force[p])
-						DNAExtension=DNAExtension[p]<17e-9||numtype(DNAExtension[p])==2?17e-9:DNAExtension[p]
+						Wave DNAExtension=MakeDNAHandleExt(Force,DNAWLC_Coeff,DNAExtName=RNACLSettingsStr[%DNAExt],DNAExt_LowerBound=WaveMin(Ext))
 						Wave RNAExtension=MakeRNAExt(Force, Ext, DNAExtension,RNAExtName=RNACLSettingsStr[%RNAExt])
 						MakeRNALcWave(Force,RNAExtension,Lp=RNACLSettings[%Lp_RNA],RNACLName=RNACLSettingsStr[%RNACL])
 						
