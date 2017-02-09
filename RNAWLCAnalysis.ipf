@@ -25,6 +25,8 @@ Function InitRNAWLCAnalysis([ShowGUI])
 	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNACLSettingsStr.ibw"	
 	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAWLCFitSettings.ibw"	
 	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAWLCFitSettingsStr.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAHMMSettings.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAHMMSettingsStr.ibw"	
 	
 	// Load RNA WLC Panel
 	If(ShowGUI)
