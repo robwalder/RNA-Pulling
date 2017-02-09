@@ -108,16 +108,19 @@ End
 
 Window RNAWLCPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(1151,67,1620,733) as "RNA WLC"
+	NewPanel /W=(1388,65,1857,894) as "RNA WLC"
 	SetDrawLayer UserBack
 	DrawLine 6,234,444,234
 	SetDrawEnv fsize= 14
 	DrawText 9,26,"DNA Handles WLC Fit"
-	DrawLine 14,491,452,491
+	DrawLine 13,491,451,491
 	SetDrawEnv fsize= 14
 	DrawText 10,252,"RNA WLC Fit"
 	SetDrawEnv fsize= 14
-	DrawText 13,509,"RNA Contour Length Space"
+	DrawText 12,509,"RNA Contour Length Space"
+	SetDrawEnv fsize= 14
+	DrawText 11,658,"State Identification with Hidden Markov Model"
+	DrawLine 12,640,450,640
 	SetVariable DNAHandleForceWaveName,pos={7,35},size={351,16},title="Force Wave"
 	SetVariable DNAHandleForceWaveName,value= root:RNAPulling:Analysis:RNAWLCAnalysis:DNAHandleFitSettingsStr[%Force]
 	SetVariable StartValue,pos={6,74},size={150,16},title="Start Value"
@@ -252,6 +255,30 @@ Window RNAWLCPanel() : Panel
 	SetVariable RNACL_LPSV,pos={368,565},size={98,16},title="RNA Lp"
 	SetVariable RNACL_LPSV,format="%.1W1Pm"
 	SetVariable RNACL_LPSV,limits={0,inf,1e-09},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettings[%Lp_RNA]
+	SetVariable TargetWave_HMM,pos={15,665},size={351,16},title="Target Wave"
+	SetVariable TargetWave_HMM,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettingsStr[%Target]
+	Button RNAExtWave_HMM,pos={13,726},size={117,20},proc=RNAWLCAnalysisButtonProc,title="RNA Ext Wave"
+	Button RNAExtWave_HMM,fColor=(61440,61440,61440)
+	Button RNACLWave_HMM,pos={135,725},size={117,20},proc=RNAWLCAnalysisButtonProc,title="RNA CL Wave"
+	Button RNACLWave_HMM,fColor=(61440,61440,61440)
+	SetVariable StateCount_HMM,pos={16,749},size={112,16},title="State Count"
+	SetVariable StateCount_HMM,limits={0,inf,1},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettings[%StateCount]
+	SetVariable ModeCount_HMM,pos={15,769},size={115,16},title="Mode Count"
+	SetVariable ModeCount_HMM,limits={0,inf,1},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettings[%ModeCount]
+	SetVariable RNAWLC_DNAHandleKmod1,pos={137,748},size={138,16},title="Drift Guess"
+	SetVariable RNAWLC_DNAHandleKmod1,format="%.1W1Pm"
+	SetVariable RNAWLC_DNAHandleKmod1,limits={0,inf,1e-09},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettings[%DriftGuess]
+	SetVariable NoiseGuess_HMM,pos={137,769},size={131,16},title="Noise Guess"
+	SetVariable NoiseGuess_HMM,format="%.1W1Pm"
+	SetVariable NoiseGuess_HMM,limits={0,inf,1e-09},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettings[%NoiseGuess]
+	SetVariable TransitionProb_HMM,pos={279,746},size={138,16},title="Transition Prob"
+	SetVariable TransitionProb_HMM,limits={0,1,0.1},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettings[%TransitionProb]
+	Button DoHMM,pos={17,790},size={117,20},proc=RNAWLCAnalysisButtonProc,title="Do HMM Fit"
+	Button DoHMM,fColor=(61440,61440,61440)
+	SetVariable OutputDF_HMM,pos={15,683},size={351,16},title="Output Data Folder"
+	SetVariable OutputDF_HMM,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettingsStr[%OutputDataFolder]
+	SetVariable OutputName_HMM,pos={17,703},size={351,16},title="Output Name"
+	SetVariable OutputName_HMM,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettingsStr[%OutputName]
 EndMacro
   
 Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
@@ -264,7 +291,9 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 	Wave/T RNAWLCFitSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettingsStr
 	Wave RNACLSettings=root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettings
 	Wave/T RNACLSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr
-	
+	Wave RNAHMMSettings=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettings
+	Wave/T RNAHMMSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettingsStr
+
 	switch( ba.eventCode )
 		case 2: // mouse up
 			// click code here
@@ -331,6 +360,13 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						Wave RNAExtension=MakeRNAExt(Force, Ext, DNAExtension,RNAExtName=RNACLSettingsStr[%RNAExt])
 						MakeRNALcWave(Force,RNAExtension,Lp=RNACLSettings[%Lp_RNA],RNACLName=RNACLSettingsStr[%RNACL])
 						
+					break
+					case "DoHMMFit":
+						SetDataFolder $RNAHMMSettingsStr[%OutputDataFolder]
+						Wave Target=$RNAHMMSettingsStr[%Target]
+						Duplicate/O Target,HMMTarget				
+						HMMTarget*=1e9
+						DriftMarkovFit(HMMTarget, RNAHMMSettings[%StateCount],  RNAHMMSettings[%ModeCount],  RNAHMMSettings[%DriftGuess]*1e9, RNAHMMSettings[%NoiseGuess]*1e9, RNAHMMSettings[%TransitionProb],10)
 					break
 					case "NewRNAFitButton":
 					break
