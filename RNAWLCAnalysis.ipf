@@ -108,6 +108,48 @@ Function/Wave MakeRNALcWave(Force,RNAExt,[Lp,RNACL_LowerBound,RNACLName])
 	Return RNACLWave
 End
 
+Function SaveCurrentRNAWLC(SaveName)
+	String SaveName
+	
+	String DataFolderName="root:RNAPulling:Analysis:RNAWLCAnalysis:"+SaveName
+	String TargetDataFolderName="root:RNAPulling:Analysis:RNAWLCAnalysis:"
+	
+	SetDataFolder $TargetDataFolderName
+	String WaveNames = WaveList("*", ";" ,"" )
+	NewDataFolder/O $DataFolderName
+	
+	Variable NumWavesToCopy=ItemsInList(WaveNames, ";")
+	Variable Counter=0
+	For(Counter=0;Counter<NumWavesToCopy;Counter+=1)
+		String CurrentWaveName=TargetDataFolderName+StringFromList(Counter, WaveNames)
+		String NewWaveName=DataFolderName+":"+StringFromList(Counter, WaveNames)
+		Duplicate/O $CurrentWaveName,$NewWaveName
+	EndFor
+
+End
+
+Function LoadSavedRNAWLC(SaveName)
+	String SaveName
+	
+	String SaveDataFolderName="root:RNAPulling:Analysis:RNAWLCAnalysis:"+SaveName
+	String TargetDataFolderName="root:RNAPulling:Analysis:RNAWLCAnalysis:"
+	
+	SetDataFolder $TargetDataFolderName
+	KillWaves/A/Z
+
+	SetDataFolder $SaveDataFolderName
+	String WaveNames = WaveList("*", ";" ,"" )
+	
+	Variable NumWavesToCopy=ItemsInList(WaveNames, ";")
+	Variable Counter=0
+	For(Counter=0;Counter<NumWavesToCopy;Counter+=1)
+		String CurrentWaveName=SaveDataFolderName+StringFromList(Counter, WaveNames)
+		String NewWaveName=TargetDataFolderName+":"+StringFromList(Counter, WaveNames)
+		Duplicate/O $CurrentWaveName,$NewWaveName
+	EndFor
+
+End
+
 Window RNAWLCPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
 	NewPanel /W=(1388,65,1857,894) as "RNA WLC"
@@ -363,7 +405,7 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						MakeRNALcWave(Force,RNAExtension,Lp=RNACLSettings[%Lp_RNA],RNACLName=RNACLSettingsStr[%RNACL])
 						
 					break
-					case "DoHMMFit":
+					case "DoHMM":
 						SetDataFolder $RNAHMMSettingsStr[%OutputDataFolder]
 						Wave Target=$RNAHMMSettingsStr[%Target]
 						Duplicate/O Target,HMMTarget				
