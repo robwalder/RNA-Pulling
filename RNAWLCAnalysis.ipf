@@ -143,11 +143,18 @@ Function LoadSavedRNAWLC(SaveName)
 	Variable NumWavesToCopy=ItemsInList(WaveNames, ";")
 	Variable Counter=0
 	For(Counter=0;Counter<NumWavesToCopy;Counter+=1)
-		String CurrentWaveName=SaveDataFolderName+StringFromList(Counter, WaveNames)
-		String NewWaveName=TargetDataFolderName+":"+StringFromList(Counter, WaveNames)
+		String CurrentWaveName=SaveDataFolderName+":"+StringFromList(Counter, WaveNames)
+		String NewWaveName=TargetDataFolderName+StringFromList(Counter, WaveNames)
 		Duplicate/O $CurrentWaveName,$NewWaveName
 	EndFor
 
+End
+
+Function KillSavedRNAWLC(SaveName)
+	String SaveName
+	
+	String SaveDataFolderName="root:RNAPulling:Analysis:RNAWLCAnalysis:"+SaveName
+	KillDataFolder/Z $SaveDataFolderName
 End
 
 Window RNAWLCPanel() : Panel
