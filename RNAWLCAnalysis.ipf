@@ -2,6 +2,7 @@
 #pragma version=1.0
 #include "::Force-Spectroscopy-Models:WLCFits" version>=1.2
 #include "::Force-Spectroscopy-Models:CLSpace" version>=1.1
+#include "::MarkovFitter:DriftMarkovFitter" 
 
 Function InitRNAWLCAnalysis([ShowGUI])
 	Variable ShowGUI
@@ -417,7 +418,7 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						Wave Target=$RNAHMMSettingsStr[%Target]
 						Duplicate/O Target,HMMTarget				
 						HMMTarget*=1e9
-						DriftMarkovFit(HMMTarget, RNAHMMSettings[%StateCount],  RNAHMMSettings[%ModeCount],  RNAHMMSettings[%DriftGuess]*1e9, RNAHMMSettings[%NoiseGuess]*1e9, RNAHMMSettings[%TransitionProb],10)
+						DriftMarkovFitter(HMMTarget, RNAHMMSettings[%StateCount],  RNAHMMSettings[%ModeCount], 0, RNAHMMSettings[%DriftGuess]*1e9, RNAHMMSettings[%NoiseGuess]*1e9, RNAHMMSettings[%TransitionProb],0,0)
 					break
 					case "NewRNAFitButton":
 					break
