@@ -160,7 +160,7 @@ End
 
 Window RNAWLCPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(1388,65,1857,894) as "RNA WLC"
+	NewPanel /W=(862,66,1331,894) as "RNA WLC"
 	SetDrawLayer UserBack
 	DrawLine 6,234,444,234
 	SetDrawEnv fsize= 14
@@ -331,6 +331,8 @@ Window RNAWLCPanel() : Panel
 	SetVariable OutputDF_HMM,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettingsStr[%OutputDataFolder]
 	SetVariable OutputName_HMM,pos={17,703},size={351,16},title="Output Name"
 	SetVariable OutputName_HMM,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettingsStr[%OutputName]
+	Button SaveRNAWLC,pos={144,791},size={117,20},proc=RNAWLCAnalysisButtonProc,title="Save RNA WLC"
+	Button SaveRNAWLC,fColor=(61440,61440,61440)
 EndMacro
   
 Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
@@ -419,6 +421,9 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						Duplicate/O Target,HMMTarget				
 						HMMTarget*=1e9
 						DriftMarkovFitter(HMMTarget, RNAHMMSettings[%StateCount],  RNAHMMSettings[%ModeCount], 0, RNAHMMSettings[%DriftGuess]*1e9, RNAHMMSettings[%NoiseGuess]*1e9, RNAHMMSettings[%TransitionProb],0,0)
+					break
+					case "SaveRNAWLC":
+						SaveCurrentRNAWLC("RNAPulling")
 					break
 					case "NewRNAFitButton":
 					break
