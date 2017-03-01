@@ -3,6 +3,8 @@
 #include "::Force-Spectroscopy-Models:WLCFits" version>=1.2
 #include "::Force-Spectroscopy-Models:CLSpace" version>=1.1
 #include "::MarkovFitter:DriftMarkovFitter" 
+#include "::General-Igor-Utilities:SaveWavesUtil" 
+
 
 Function InitRNAWLCAnalysis([ShowGUI])
 	Variable ShowGUI
@@ -26,8 +28,9 @@ Function InitRNAWLCAnalysis([ShowGUI])
 	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNACLSettingsStr.ibw"	
 	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAWLCFitSettings.ibw"	
 	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAWLCFitSettingsStr.ibw"	
-	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAHMMSettings.ibw"	
-	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAHMMSettingsStr.ibw"	
+//	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAHMMSettings.ibw"	
+//	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAHMMSettingsStr.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAWLCSettingsStr.ibw"	
 	
 	// Load RNA WLC Panel
 	If(ShowGUI)
@@ -109,58 +112,22 @@ Function/Wave MakeRNALcWave(Force,RNAExt,[Lp,RNACL_LowerBound,RNACLName])
 	Return RNACLWave
 End
 
-Function SaveCurrentRNAWLC(SaveName)
-	String SaveName
-	
-	String DataFolderName="root:RNAPulling:Analysis:RNAWLCAnalysis:"+SaveName
-	String TargetDataFolderName="root:RNAPulling:Analysis:RNAWLCAnalysis:"
-	
-	SetDataFolder $TargetDataFolderName
-	String WaveNames = WaveList("*", ";" ,"" )
-	NewDataFolder/O $DataFolderName
-	
-	Variable NumWavesToCopy=ItemsInList(WaveNames, ";")
-	Variable Counter=0
-	For(Counter=0;Counter<NumWavesToCopy;Counter+=1)
-		String CurrentWaveName=TargetDataFolderName+StringFromList(Counter, WaveNames)
-		String NewWaveName=DataFolderName+":"+StringFromList(Counter, WaveNames)
-		Duplicate/O $CurrentWaveName,$NewWaveName
-	EndFor
+Function ResetRNAWLC()
+	SetDataFolder root:RNAPulling:Analysis:RNAWLCAnalysis
 
-End
-
-Function LoadSavedRNAWLC(SaveName)
-	String SaveName
-	
-	String SaveDataFolderName="root:RNAPulling:Analysis:RNAWLCAnalysis:"+SaveName
-	String TargetDataFolderName="root:RNAPulling:Analysis:RNAWLCAnalysis:"
-	
-	SetDataFolder $TargetDataFolderName
 	KillWaves/A/Z
-
-	SetDataFolder $SaveDataFolderName
-	String WaveNames = WaveList("*", ";" ,"" )
-	
-	Variable NumWavesToCopy=ItemsInList(WaveNames, ";")
-	Variable Counter=0
-	For(Counter=0;Counter<NumWavesToCopy;Counter+=1)
-		String CurrentWaveName=SaveDataFolderName+":"+StringFromList(Counter, WaveNames)
-		String NewWaveName=TargetDataFolderName+StringFromList(Counter, WaveNames)
-		Duplicate/O $CurrentWaveName,$NewWaveName
-	EndFor
-
-End
-
-Function KillSavedRNAWLC(SaveName)
-	String SaveName
-	
-	String SaveDataFolderName="root:RNAPulling:Analysis:RNAWLCAnalysis:"+SaveName
-	KillDataFolder/Z $SaveDataFolderName
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "DNAHandleFitSettings.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "DNAHandleFitSettingsStr.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNACLSettings.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNACLSettingsStr.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAWLCFitSettings.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAWLCFitSettingsStr.ibw"	
+	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAWLCSettingsStr.ibw"	
 End
 
 Window RNAWLCPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(862,66,1331,894) as "RNA WLC"
+	NewPanel /W=(1147,63,1616,798) as "RNA WLC"
 	SetDrawLayer UserBack
 	DrawLine 6,234,444,234
 	SetDrawEnv fsize= 14
@@ -171,7 +138,7 @@ Window RNAWLCPanel() : Panel
 	SetDrawEnv fsize= 14
 	DrawText 12,509,"RNA Contour Length Space"
 	SetDrawEnv fsize= 14
-	DrawText 11,658,"State Identification with Hidden Markov Model"
+	DrawText 11,658,"Save or Load RNA WLC Fit"
 	DrawLine 12,640,450,640
 	SetVariable DNAHandleForceWaveName,pos={7,35},size={351,16},title="Force Wave"
 	SetVariable DNAHandleForceWaveName,value= root:RNAPulling:Analysis:RNAWLCAnalysis:DNAHandleFitSettingsStr[%Force]
@@ -307,32 +274,16 @@ Window RNAWLCPanel() : Panel
 	SetVariable RNACL_LPSV,pos={368,565},size={98,16},title="RNA Lp"
 	SetVariable RNACL_LPSV,format="%.1W1Pm"
 	SetVariable RNACL_LPSV,limits={0,inf,1e-09},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettings[%Lp_RNA]
-	SetVariable TargetWave_HMM,pos={15,665},size={351,16},title="Target Wave"
-	SetVariable TargetWave_HMM,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettingsStr[%Target]
-	Button RNAExtWave_HMM,pos={13,726},size={117,20},proc=RNAWLCAnalysisButtonProc,title="RNA Ext Wave"
-	Button RNAExtWave_HMM,fColor=(61440,61440,61440)
-	Button RNACLWave_HMM,pos={135,725},size={117,20},proc=RNAWLCAnalysisButtonProc,title="RNA CL Wave"
-	Button RNACLWave_HMM,fColor=(61440,61440,61440)
-	SetVariable StateCount_HMM,pos={16,749},size={112,16},title="State Count"
-	SetVariable StateCount_HMM,limits={0,inf,1},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettings[%StateCount]
-	SetVariable ModeCount_HMM,pos={15,769},size={115,16},title="Mode Count"
-	SetVariable ModeCount_HMM,limits={0,inf,1},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettings[%ModeCount]
-	SetVariable RNAWLC_DNAHandleKmod1,pos={137,748},size={138,16},title="Drift Guess"
-	SetVariable RNAWLC_DNAHandleKmod1,format="%.1W1Pm"
-	SetVariable RNAWLC_DNAHandleKmod1,limits={0,inf,1e-09},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettings[%DriftGuess]
-	SetVariable NoiseGuess_HMM,pos={137,769},size={131,16},title="Noise Guess"
-	SetVariable NoiseGuess_HMM,format="%.1W1Pm"
-	SetVariable NoiseGuess_HMM,limits={0,inf,1e-09},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettings[%NoiseGuess]
-	SetVariable TransitionProb_HMM,pos={279,746},size={138,16},title="Transition Prob"
-	SetVariable TransitionProb_HMM,limits={0,1,0.1},value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettings[%TransitionProb]
-	Button DoHMM,pos={17,790},size={117,20},proc=RNAWLCAnalysisButtonProc,title="Do HMM Fit"
-	Button DoHMM,fColor=(61440,61440,61440)
-	SetVariable OutputDF_HMM,pos={15,683},size={351,16},title="Output Data Folder"
-	SetVariable OutputDF_HMM,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettingsStr[%OutputDataFolder]
-	SetVariable OutputName_HMM,pos={17,703},size={351,16},title="Output Name"
-	SetVariable OutputName_HMM,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettingsStr[%OutputName]
-	Button SaveRNAWLC,pos={144,791},size={117,20},proc=RNAWLCAnalysisButtonProc,title="Save RNA WLC"
+	Button LoadRNAWLC,pos={77,705},size={61,19},proc=RNAWLCAnalysisButtonProc,title="Load"
+	Button LoadRNAWLC,fColor=(61440,61440,61440)
+	Button SaveRNAWLC,pos={10,704},size={63,19},proc=RNAWLCAnalysisButtonProc,title="Save"
 	Button SaveRNAWLC,fColor=(61440,61440,61440)
+	SetVariable TargetDF_RNAWLC,pos={12,671},size={351,16},title="Target DF"
+	SetVariable TargetDF_RNAWLC,value= root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCSettingsStr[%TargetDF]
+	Button DeleteRNAWLC,pos={141,705},size={65,20},proc=RNAWLCAnalysisButtonProc,title="Delete"
+	Button DeleteRNAWLC,fColor=(61440,61440,61440)
+	Button ResetRNAWLC,pos={208,704},size={65,20},proc=RNAWLCAnalysisButtonProc,title="Reset"
+	Button ResetRNAWLC,fColor=(61440,61440,61440)
 EndMacro
   
 Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
@@ -345,9 +296,8 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 	Wave/T RNAWLCFitSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCFitSettingsStr
 	Wave RNACLSettings=root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettings
 	Wave/T RNACLSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNACLSettingsStr
-	Wave RNAHMMSettings=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettings
-	Wave/T RNAHMMSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAHMMSettingsStr
-
+	Wave/T RNAWLCSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCSettingsStr
+	SetDataFolder root:RNAPulling:Analysis:RNAWLCAnalysis
 	switch( ba.eventCode )
 		case 2: // mouse up
 			// click code here
@@ -415,15 +365,17 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						MakeRNALcWave(Force,RNAExtension,Lp=RNACLSettings[%Lp_RNA],RNACLName=RNACLSettingsStr[%RNACL])
 						
 					break
-					case "DoHMM":
-						SetDataFolder $RNAHMMSettingsStr[%OutputDataFolder]
-						Wave Target=$RNAHMMSettingsStr[%Target]
-						Duplicate/O Target,HMMTarget				
-						HMMTarget*=1e9
-						DriftMarkovFitter(HMMTarget, RNAHMMSettings[%StateCount],  RNAHMMSettings[%ModeCount], 0, RNAHMMSettings[%DriftGuess]*1e9, RNAHMMSettings[%NoiseGuess]*1e9, RNAHMMSettings[%TransitionProb],0,0)
-					break
 					case "SaveRNAWLC":
-						SaveCurrentRNAWLC("RNAPulling")
+						SaveWavesToDF(RNAWLCSettingsStr[%TargetDF])
+					break
+					case "LoadRNAWLC":
+						LoadSavedWaves(RNAWLCSettingsStr[%TargetDF])
+					break
+					case "DeleteRNAWLC":
+						KillDataFolder/Z $RNAWLCSettingsStr[%TargetDF]
+					break
+					case "ResetRNAWLC":
+						ResetRNAWLC()					
 					break
 					case "NewRNAFitButton":
 					break
