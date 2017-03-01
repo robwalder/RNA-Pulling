@@ -1171,6 +1171,13 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 							KillWindow RNARampAnalysis
 						EndIf
 					EndIf
+					
+					String SavedRNAWLCFit="root:RNAPulling:Analysis:RNAWLCAnalysis:RNAPulling"+num2str(dval)
+					Wave/T RNAWLCSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCSettingsStr
+					RNAWLCSettingsStr[%TargetDF]=SavedRNAWLCFit
+					Wave/t HMMSettingsStr=root:HMM:HMMSettingsStr
+					HMMSettingsStr[%TargetDataFolder]="root:HMM:RNAPulling"+num2str(dval)
+					
 				break
 				case "SubIndex":
 					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])
