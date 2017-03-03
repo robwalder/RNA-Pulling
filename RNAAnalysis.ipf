@@ -3,6 +3,9 @@
 #include "::Force-Ramp-Utilities:BoxCarAveraging"
 #include "::Force-Ramp-Utilities:SelectFR"
 #include "::AR-Data:MeasurementTimeline"
+#include "::MarkovFitter:DriftMarkovFitter" 
+#include "::General-Igor-Utilities:SaveWavesUtil" 
+#include "::RNA-Pulling:RNAWLCAnalysis" 
 
 
 
