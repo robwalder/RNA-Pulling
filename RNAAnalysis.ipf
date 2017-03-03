@@ -1172,11 +1172,19 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 						EndIf
 					EndIf
 					
+					// Set up RNA WLC application
+					ResetRNAWLC()
 					String SavedRNAWLCFit="root:RNAPulling:Analysis:RNAWLCAnalysis:RNAPulling"+num2str(dval)
 					Wave/T RNAWLCSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCSettingsStr
 					RNAWLCSettingsStr[%TargetDF]=SavedRNAWLCFit
+					LoadSavedWaves(RNAWLCSettingsStr[%TargetDF],LoadToDF="root:RNAPulling:Analysis:RNAWLCAnalysis:")
+					
+					// Set up HMM application
+					ResetHMM()
 					Wave/t HMMSettingsStr=root:HMM:HMMSettingsStr
 					HMMSettingsStr[%TargetDataFolder]="root:HMM:RNAPulling"+num2str(dval)
+					LoadSavedWaves(HMMSettingsStr[%TargetDataFolder],LoadToDF="root:HMM:")
+
 					
 				break
 				case "SubIndex":

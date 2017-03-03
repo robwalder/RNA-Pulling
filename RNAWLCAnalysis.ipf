@@ -114,7 +114,16 @@ End
 
 Function ResetRNAWLC()
 	SetDataFolder root:RNAPulling:Analysis:RNAWLCAnalysis
-
+	
+	DoWindow RNACLDisplay
+	If(V_flag)
+		KillWindow RNACLDisplay 
+	EndIf
+	DoWindow DNAHandleFit
+	If(V_flag)
+		KillWindow DNAHandleFit 
+	EndIf
+	
 	KillWaves/A/Z
 	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "DNAHandleFitSettings.ibw"	
 	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "DNAHandleFitSettingsStr.ibw"	
@@ -124,6 +133,7 @@ Function ResetRNAWLC()
 	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAWLCFitSettingsStr.ibw"	
 	LoadWave/H/Q/O/P=RNAWLCAnalysisParms "RNAWLCSettingsStr.ibw"	
 End
+
 
 Window RNAWLCPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
@@ -284,6 +294,10 @@ Window RNAWLCPanel() : Panel
 	Button DeleteRNAWLC,fColor=(61440,61440,61440)
 	Button ResetRNAWLC,pos={208,704},size={65,20},proc=RNAWLCAnalysisButtonProc,title="Reset"
 	Button ResetRNAWLC,fColor=(61440,61440,61440)
+	Button ShowDNAHandleFit,pos={273,210},size={115,19},proc=RNAWLCAnalysisButtonProc,title="Show DNA Handle Fit"
+	Button ShowDNAHandleFit,fColor=(61440,61440,61440)
+	Button DisplayRNACL,pos={142,617},size={117,20},proc=RNAWLCAnalysisButtonProc,title="Display RNA Lc"
+	Button DisplayRNACL,fColor=(61440,61440,61440)
 EndMacro
   
 Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
@@ -319,6 +333,25 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						RNAWLCFitSettings[%Offset_DNA]=WLC_Coeff[3]
 						
 						WLCGuide("ExtensibleWLC",DNAHandleFitSettings[%Lc_DNA],DNAHandleFitSettings[%Lp_DNA],ForceWaveName="DNAHandleForceGuide",SepWaveName="DNAHandleSepGuide",Offset=DNAHandleFitSettings[%Offset_DNA],StretchModulus=DNAHandleFitSettings[%Kmod_DNA],MaxForce=30e-12)
+
+					break
+					case "ShowDNAHandleFit":
+						Wave DNAHandleForce=$DNAHandleFitSettingsStr[%Force]
+						Wave DNAHandleExt=$DNAHandleFitSettingsStr[%Ext]
+						Wave DNAHandleForceGuide ; AbortOnRTE
+						Wave DNAHandleSepGuide ; AbortOnRTE
+						DoWindow/F DNAHandleFit
+						If(V_flag==0)
+							Display/K=1/N=DNAHandleFit DNAHandleForce vs DNAHandleExt
+							AppendToGraph/C=(0,15872,65280) DNAHandleForceGuide vs DNAHandleSepGuide
+							//ModifyGraph rgb($NameOfWave(DNAHandleForce))=(48896,59904,65280)
+							Label left "Force (pN)"
+							Label bottom "Extension (nm)"		
+							ModifyGraph muloffset={1e9,1e12}
+							ModifyGraph tickUnit=1
+							SetAxis left -5,*
+							
+						EndIf
 
 					break
 					case "InitRNAFit":
@@ -364,6 +397,18 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						Wave RNAExtension=MakeRNAExt(Force, Ext, DNAExtension,RNAExtName=RNACLSettingsStr[%RNAExt])
 						MakeRNALcWave(Force,RNAExtension,Lp=RNACLSettings[%Lp_RNA],RNACLName=RNACLSettingsStr[%RNACL])
 						
+					break
+					case "DisplayRNACL":
+						Wave RNACL= $RNACLSettingsStr[%RNACL] ; AbortOnRTE
+						DoWindow/F RNACLDisplay
+						If(V_flag==0)
+							Display/K=1/N=RNACLDisplay RNACL
+							Label left "RNA Lc (nm)"
+							Label bottom "Time (s)"		
+							ModifyGraph muloffset={0,1e9}
+							ModifyGraph tickUnit=1
+						EndIf
+
 					break
 					case "SaveRNAWLC":
 						SaveWavesToDF(RNAWLCSettingsStr[%TargetDF])
