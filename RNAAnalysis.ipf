@@ -883,6 +883,71 @@ Function GetIndividualRoS(MasterIndex,RSIndex,DefV,ZSensor,ZSetPoint,RNAPullingS
 	Duplicate/O/R=(StartIndex,EndIndex) ZSensor, $ZSensorName	
 End
 
+Function MakeStartEndIndexRorS(MasterIndex,ZSetPoint,RNAPullingSettings,RNAPullingSettingsStr,[StartIndexName,EndIndexName,UnfoldStartName,UnfoldEndName,RefoldStartName,RefoldEndName])
+	Variable MasterIndex
+	Wave ZSetPoint,RNAPullingSettings
+	Wave/T RNAPullingSettingsStr
+	String StartIndexName,EndIndexName,UnfoldStartName,UnfoldEndName,RefoldStartName,RefoldEndName
+		If(ParamIsDefault(StartIndexName))
+		StartIndexName="root:RNAPulling:Analysis:StartIndex"
+	EndIf
+
+	If(ParamIsDefault(EndIndexName))
+		EndIndexName="root:RNAPulling:Analysis:EndIndex"
+	EndIf
+	If(ParamIsDefault(UnfoldStartName))
+		UnfoldStartName="root:RNAPulling:Analysis:UnfoldStart"
+	EndIf
+	If(ParamIsDefault(UnfoldEndName))
+		UnfoldEndName="root:RNAPulling:Analysis:UnfoldEnd"
+	EndIf
+	If(ParamIsDefault(RefoldStartName))
+		RefoldStartName="root:RNAPulling:Analysis:RefoldStart"
+	EndIf
+	If(ParamIsDefault(RefoldEndName))
+		RefoldEndName="root:RNAPulling:Analysis:RefoldEnd"
+	EndIf
+	
+	Variable RSIndex=0
+	Variable NumRS=NumStepsOrRamps(RNAPullingSettings,RNAPullingSettingsStr)
+	Make/O/D/N=(NumRS) $StartIndexName,$EndIndexName,$UnfoldStartName,$UnfoldEndName,$RefoldStartName,$RefoldEndName
+	Wave StartIndex=$StartIndexName
+	Wave EndIndex=$EndIndexName
+	Wave UnfoldStart=$UnfoldStartName
+	Wave UnfoldEnd=$UnfoldEndName
+	Wave RefoldStart=$RefoldStartName
+	Wave RefoldEnd=$RefoldEndName
+	
+	
+	For(RSIndex=0;RSIndex<NumRS;RSIndex+=1)
+	
+		StrSwitch(RNAPullingSettingsStr[%CurrentMode])
+			case "LocalRamp":
+				Variable TotalTime=deltax(ZSetPoint)*DimSize(ZSetPoint,0)
+				Variable TimePerRamp=TotalTime/NumStepsOrRamps(RNAPullingSettings,RNAPullingSettingsStr)
+				StartIndex[RSIndex]=RSIndex*TimePerRamp
+				EndIndex[RSIndex]=(RSIndex+1)*TimePerRamp
+				UnfoldStart[RSIndex]=RSIndex*TimePerRamp
+				UnfoldEnd[RSIndex]=(RSIndex+0.5)*TimePerRamp
+				RefoldStart[RSIndex]=(RSIndex+0.5)*TimePerRamp
+				RefoldEnd[RSIndex]=(RSIndex+1)*TimePerRamp
+			break
+			case "Steps":
+				StartIndex[RSIndex]=GetStepStartTime(RNAPullingSettings,RSIndex)
+				EndIndex[RSIndex]=StartIndex+RNAPullingSettings[%TimePerStep]
+				UnfoldStart[RSIndex]=NaN
+				UnfoldEnd[RSIndex]=NaN
+				RefoldStart[RSIndex]=NaN
+				RefoldEnd[RSIndex]=NaN
+				
+			break
+	EndSwitch
+	EndFor
+
+	
+
+End
+
 Function AllRNADisplays([TargetDF])
 	String TargetDF
 	If(ParamIsDefault(TargetDF))
@@ -1144,10 +1209,10 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 	Wave RefoldRFFitSettings=$RampDF+"RefoldRFFitSettings"
 	Wave RampAnalysisSettings=$RampDF+"RampAnalysisSettings"
 
-	If(RFAnalysisQ(AnalysisSettings[%MasterIndex]))
-		Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(AnalysisSettings[%MasterIndex])
-		Wave RefoldSettings=$RampDF+"RefoldRFFitSettings_"+num2str(AnalysisSettings[%MasterIndex])
-	EndIf
+//	If(RFAnalysisQ(AnalysisSettings[%MasterIndex]))
+//		Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(AnalysisSettings[%MasterIndex])
+//		Wave RefoldSettings=$RampDF+"RefoldRFFitSettings_"+num2str(AnalysisSettings[%MasterIndex])
+//	EndIf
 
 	switch( sva.eventCode )
 		case 1: // mouse up
@@ -1166,14 +1231,15 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 				 	AnalysisSettings[%NumSteps]=NumStepsOrRamps(Settings,SettingsStr)
 					LoadRorS(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex])	
 					AllRNADisplays()				
-					If(RFAnalysisQ(AnalysisSettings[%MasterIndex]))
-						DisplayRampAnalysis(AnalysisSettings[%MasterIndex],0,LoadFitSettings=1)
-					Else
-						DoWindow/F RNARampAnalysis
-						If(V_flag==1)
-							KillWindow RNARampAnalysis
-						EndIf
-					EndIf
+					MakeStartEndIndexRorS(dval,ZSetPoint,Settings,SettingsStr)
+//					If(RFAnalysisQ(AnalysisSettings[%MasterIndex]))
+//						DisplayRampAnalysis(AnalysisSettings[%MasterIndex],0,LoadFitSettings=1)
+//					Else
+//						DoWindow/F RNARampAnalysis
+//						If(V_flag==1)
+//							KillWindow RNARampAnalysis
+//						EndIf
+//					EndIf
 					
 					// Set up RNA WLC application
 					ResetRNAWLC()
@@ -1181,12 +1247,16 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 					Wave/T RNAWLCSettingsStr=root:RNAPulling:Analysis:RNAWLCAnalysis:RNAWLCSettingsStr
 					RNAWLCSettingsStr[%TargetDF]=SavedRNAWLCFit
 					LoadSavedWaves(RNAWLCSettingsStr[%TargetDF],LoadToDF="root:RNAPulling:Analysis:RNAWLCAnalysis:")
-					
 					// Set up HMM application
 					ResetHMM()
 					Wave/t HMMSettingsStr=root:HMM:HMMSettingsStr
 					HMMSettingsStr[%TargetDataFolder]="root:HMM:RNAPulling"+num2str(dval)
 					LoadSavedWaves(HMMSettingsStr[%TargetDataFolder],LoadToDF="root:HMM:")
+					// Set up Rupture Force application
+					ResetRF()
+					Wave/t RFSettingsStr=root:RuptureForce:RFSettingsStr
+					RFSettingsStr[%TargetDataFolder]="root:RuptureForce:RNAPulling"+num2str(dval)
+					LoadSavedWaves(RFSettingsStr[%TargetDataFolder],LoadToDF="root:RuptureForce:")
 
 					
 				break
@@ -1207,18 +1277,18 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 				case "UnfoldFit2Fraction":
 				case "RefoldFit1Fraction":
 				case "RefoldFit2Fraction":
-					If(RFAnalysisQ(AnalysisSettings[%MasterIndex]))
-						DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
-					EndIf
-					GuessRFFitSettings(UnfoldRFFitSettings,RefoldRFFitSettings,ForceWave,ForceWave_smth,Settings,UnfoldStartFraction=RampAnalysisSettings[%UnfoldFit1Fraction],UnfoldEndFraction=RampAnalysisSettings[%UnfoldFit2Fraction],RefoldStartFraction=RampAnalysisSettings[%RefoldFit1Fraction],RefoldEndFraction=RampAnalysisSettings[%RefoldFit2Fraction])
-					Variable NumSettings=DimSize(UnfoldRFFitSettings,0)
-					Variable SettingsCounter=0
-					For(SettingsCounter=0;SettingsCounter<NumSettings;SettingsCounter+=1)
-						UnfoldSettings[SettingsCounter][AnalysisSettings[%SubIndex]]=UnfoldRFFitSettings[SettingsCounter]
-						RefoldSettings[SettingsCounter][AnalysisSettings[%SubIndex]]=RefoldRFFitSettings[SettingsCounter]
-					EndFor
-					MeasureBothRF(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],"BothRuptures",LoadWaves=1)
-					DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
+//					If(RFAnalysisQ(AnalysisSettings[%MasterIndex]))
+//						DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
+//					EndIf
+//					GuessRFFitSettings(UnfoldRFFitSettings,RefoldRFFitSettings,ForceWave,ForceWave_smth,Settings,UnfoldStartFraction=RampAnalysisSettings[%UnfoldFit1Fraction],UnfoldEndFraction=RampAnalysisSettings[%UnfoldFit2Fraction],RefoldStartFraction=RampAnalysisSettings[%RefoldFit1Fraction],RefoldEndFraction=RampAnalysisSettings[%RefoldFit2Fraction])
+//					Variable NumSettings=DimSize(UnfoldRFFitSettings,0)
+//					Variable SettingsCounter=0
+//					For(SettingsCounter=0;SettingsCounter<NumSettings;SettingsCounter+=1)
+//						UnfoldSettings[SettingsCounter][AnalysisSettings[%SubIndex]]=UnfoldRFFitSettings[SettingsCounter]
+//						RefoldSettings[SettingsCounter][AnalysisSettings[%SubIndex]]=RefoldRFFitSettings[SettingsCounter]
+//					EndFor
+//					MeasureBothRF(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],"BothRuptures",LoadWaves=1)
+//					DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
 				break
 				
 			
