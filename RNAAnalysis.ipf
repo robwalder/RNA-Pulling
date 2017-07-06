@@ -1249,12 +1249,19 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 					LoadSavedWaves(RNAWLCSettingsStr[%TargetDF],LoadToDF="root:RNAPulling:Analysis:RNAWLCAnalysis:")
 					// Set up HMM application
 					ResetHMM()
-					Wave/t HMMSettingsStr=root:HMM:HMMSettingsStr
-					HMMSettingsStr[%TargetDataFolder]="root:HMM:RNAPulling"+num2str(dval)
+					Wave/T HMMSettingsStr=root:HMM:HMMSettingsStr
+					StrSwitch(SettingsStr[%CurrentMode])
+						case "LocalRamp":
+							HMMSettingsStr[%TargetDataFolder]="root:HMM:RNAPulling"+num2str(dval)
+						break
+						case "Steps":
+							HMMSettingsStr[%TargetDataFolder]="root:HMM:RNAPulling"+num2str(AnalysisSettings[%MasterIndex])+"_0"
+						break
+					EndSwitch
 					LoadSavedWaves(HMMSettingsStr[%TargetDataFolder],LoadToDF="root:HMM:")
 					// Set up Rupture Force application
 					ResetRF()
-					Wave/t RFSettingsStr=root:RuptureForce:RFSettingsStr
+					Wave/T RFSettingsStr=root:RuptureForce:RFSettingsStr
 					RFSettingsStr[%TargetDataFolder]="root:RuptureForce:RNAPulling"+num2str(dval)
 					LoadSavedWaves(RFSettingsStr[%TargetDataFolder],LoadToDF="root:RuptureForce:")
 
@@ -1265,6 +1272,19 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 					If(RFAnalysisQ(AnalysisSettings[%MasterIndex]))
 						DisplayRampAnalysis(AnalysisSettings[%MasterIndex],AnalysisSettings[%SubIndex],LoadFitSettings=1)
 					EndIf
+					
+					StrSwitch(SettingsStr[%CurrentMode])
+						case "LocalRamp":
+						break
+						case "Steps":
+							ResetHMM()
+							Wave/T HMMSettingsStr=root:HMM:HMMSettingsStr	
+							HMMSettingsStr[%TargetDataFolder]="root:HMM:RNAPulling"+num2str(AnalysisSettings[%MasterIndex])+"_"+num2str(AnalysisSettings[%SubIndex])
+							LoadSavedWaves(HMMSettingsStr[%TargetDataFolder],LoadToDF="root:HMM:")
+							HMMSettingsStr[%Target]="root:RNAPulling:Analysis:ForceRorS_smth"
+						break
+					EndSwitch
+					
 				break
 				case "BoxCarAverage":
 					RSFilterSettings[AnalysisSettings[%MasterIndex]][0]=AnalysisSettings[%BoxCarAverage]
