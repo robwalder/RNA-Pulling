@@ -3,9 +3,10 @@
 #include "::Force-Ramp-Utilities:BoxCarAveraging"
 #include "::Force-Ramp-Utilities:SelectFR"
 #include "::AR-Data:MeasurementTimeline"
-#include "::MarkovFitter:DriftMarkovFitter" 
+#include "::MarkovFitter:DriftMarkovApp" 
 #include "::General-Igor-Utilities:SaveWavesUtil" 
 #include "::RNA-Pulling:RNAWLCAnalysis" 
+#include "::RuptureForce:RuptureForceApp"
 
 
 
@@ -63,8 +64,8 @@ Function InitRNAPullingOffsets()
 	Wave RSSepOffset=root:RNAPulling:Analysis:RSSepOffset	
 		
 	Variable NumRS=DimSize(RSForceOffset,0)
-	Variable RSCounter=0
-	For(RSCounter=0;RSCounter<NumRS;RSCounter+=1)
+	Variable RSCounter=22
+	For(RSCounter=22;RSCounter<NumRS;RSCounter+=1)
 		If(WaveExists($"root:FRU:preprocessing:Offsets"))
 			Wave/T SettingsStr=$"root:RNAPulling:SavedData:SettingsStr"+num2str(RSCounter)
 			String FRName=SettingsStr[%NearestForcePull]
@@ -85,10 +86,13 @@ Function EstimatePSFCurrentMI(MasterIndex,StartStep,EndStep,[RNAAnalysisDF])
 	EndIf
 	
 	Wave ForceWave_smth=$RNAAnalysisDF+"ForceRorS_Smth"
-	Variable NumSteps=EndStep-StartStep
-	Make/O/N=(NumSteps) $RNAAnalysisDF+"PSF_Force",$RNAAnalysisDF+"PSF_Width"
+	Wave Extension_smth=$RNAAnalysisDF+"SepRorS_Smth"
+	Variable NumSteps=EndStep-StartStep+1
+	Make/O/N=(NumSteps) $RNAAnalysisDF+"PSF_Force",$RNAAnalysisDF+"PSF_Width",$RNAAnalysisDF+"PSF_Extension",$RNAAnalysisDF+"PSF_ExtensionWidth"
 	Wave PSF_Force=$RNAAnalysisDF+"PSF_Force"
 	Wave PSF_Width=$RNAAnalysisDF+"PSF_Width"
+	Wave PSF_Extension=$RNAAnalysisDF+"PSF_Extension"
+	Wave PSF_ExtensionWidth=$RNAAnalysisDF+"PSF_ExtensionWidth"
 	Variable StepCounter=StartStep
 	For(StepCounter=StartStep;StepCounter<EndStep+1;StepCounter+=1)
 		LoadRorS(MasterIndex,StepCounter)
@@ -96,9 +100,15 @@ Function EstimatePSFCurrentMI(MasterIndex,StartStep,EndStep,[RNAAnalysisDF])
 		Variable Counter=StepCounter-StartStep
 		PSF_Force[Counter]=V_avg
 		PSF_Width[Counter]=V_sdev
+		WaveStats/Q Extension_smth
+		PSF_Extension[Counter]=V_avg
+		PSF_ExtensionWidth[Counter]=V_sdev
 	EndFor
 	Display PSF_Width vs PSF_Force
       CurveFit/M=2/W=0 line, PSF_Width/X=PSF_Force/D	
+	Display PSF_ExtensionWidth vs PSF_Force
+      CurveFit/M=2/W=0 line, PSF_ExtensionWidth/X=PSF_Force/D	
+      
 End
 
 Function UpdateNFPFromTimeline()
@@ -572,26 +582,26 @@ Function/Wave MeasureRF(ForceWave_smth,RFFitSettings,[Method,TargetRuptureTime])
 	
 	If(StringMatch(Method,"TargetTime"))
 		// Now estimate start of the other state
-		Wave RF1=EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%RampEndTime],RFStatsName="RF1",FirstLastTarget="TargetTime",TargetTime=TargetRuptureTime)
-	Else
-		Wave RF1=EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%RampEndTime],RFStatsName="RF1",FirstLastTarget="Last")		
+//		Wave RF1=EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%RampEndTime],RFStatsName="RF1",FirstLastTarget="TargetTime",TargetTime=TargetRuptureTime)
+//	Else
+//		Wave RF1=EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%RampEndTime],RFStatsName="RF1",FirstLastTarget="Last")		
 	EndIF
 
 		// Do the initial estimate of RF
 		
 	If(StringMatch(Method,"BothRuptures"))
 		// Now estimate start of the other state
-		Wave RF2=EstimateRF(ForceWave_smth,RFFitSettings[%Fit2LR],RFFitSettings[%Fit2YIntercept],RFFitSettings[%RampStartTime],RFFitSettings[%Fit2EndTime],RFStatsName="RF2",FirstLastTarget="First")
-		
-		// Now check for consistency
-		Variable RFIsGood=RF2[%RuptureTime]>RF1[%RuptureTime]
-		
-		If(!RFIsGood)
-			EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%RampEndTime],RFStatsName="RF1",FirstLastTarget="Target",TargetCrossing=RF2[%RuptureTime])
-		EndIf
+//		Wave RF2=EstimateRF(ForceWave_smth,RFFitSettings[%Fit2LR],RFFitSettings[%Fit2YIntercept],RFFitSettings[%RampStartTime],RFFitSettings[%Fit2EndTime],RFStatsName="RF2",FirstLastTarget="First")
+//		
+//		// Now check for consistency
+//		Variable RFIsGood=RF2[%RuptureTime]>RF1[%RuptureTime]
+//		
+//		If(!RFIsGood)
+//			EstimateRF(ForceWave_smth,RFFitSettings[%Fit1LR],RFFitSettings[%Fit1YIntercept],RFFitSettings[%Fit1StartTime],RFFitSettings[%RampEndTime],RFStatsName="RF1",FirstLastTarget="Target",TargetCrossing=RF2[%RuptureTime])
+//		EndIf
 	EndIF
 	
-	Return RF1
+//	Return RF1
 	
 End
 
@@ -647,20 +657,20 @@ Function ApplyRFFit(UnfoldSettings,RefoldSettings,ForceWave)
 	Wave UnfoldSettings,RefoldSettings,ForceWave
 	
 	// Fit a line to the 4 main segments associated with unfolded and refolded states
-	Wave LRFitUnfold1=LR(ForceWave,UnfoldSettings[%Fit1StartTime],UnfoldSettings[%Fit1EndTime],LRFitName="LRFitUnfold1",SpecifyEndTime=1)
-	Wave LRFitUnfold2=LR(ForceWave,UnfoldSettings[%Fit2StartTime],UnfoldSettings[%Fit2EndTime],LRFitName="LRFitUnfold2",SpecifyEndTime=1)
-	Wave LRFitRefold1=LR(ForceWave,RefoldSettings[%Fit1StartTime],RefoldSettings[%Fit1EndTime],LRFitName="LRFitRefold1",SpecifyEndTime=1)
-	Wave LRFitRefold2=LR(ForceWave,RefoldSettings[%Fit2StartTime],RefoldSettings[%Fit2EndTime],LRFitName="LRFitRefold2",SpecifyEndTime=1)
-	// Set Unfold Fit Settings
-	UnfoldSettings[%Fit1LR]=LRFitUnfold1[%LoadingRate]
-	UnfoldSettings[%Fit1YIntercept]=LRFitUnfold1[%YIntercept]
-	UnfoldSettings[%Fit2LR]=LRFitUnfold2[%LoadingRate]
-	UnfoldSettings[%Fit2YIntercept]=LRFitUnfold2[%YIntercept]
-	// Set Refold Fit Settings
-	RefoldSettings[%Fit1LR]=LRFitRefold1[%LoadingRate]
-	RefoldSettings[%Fit1YIntercept]=LRFitRefold1[%YIntercept]
-	RefoldSettings[%Fit2LR]=LRFitRefold2[%LoadingRate]
-	RefoldSettings[%Fit2YIntercept]=LRFitRefold2[%YIntercept]
+//	Wave LRFitUnfold1=LR(ForceWave,UnfoldSettings[%Fit1StartTime],UnfoldSettings[%Fit1EndTime],LRFitName="LRFitUnfold1",SpecifyEndTime=1)
+//	Wave LRFitUnfold2=LR(ForceWave,UnfoldSettings[%Fit2StartTime],UnfoldSettings[%Fit2EndTime],LRFitName="LRFitUnfold2",SpecifyEndTime=1)
+//	Wave LRFitRefold1=LR(ForceWave,RefoldSettings[%Fit1StartTime],RefoldSettings[%Fit1EndTime],LRFitName="LRFitRefold1",SpecifyEndTime=1)
+//	Wave LRFitRefold2=LR(ForceWave,RefoldSettings[%Fit2StartTime],RefoldSettings[%Fit2EndTime],LRFitName="LRFitRefold2",SpecifyEndTime=1)
+//	// Set Unfold Fit Settings
+//	UnfoldSettings[%Fit1LR]=LRFitUnfold1[%LoadingRate]
+//	UnfoldSettings[%Fit1YIntercept]=LRFitUnfold1[%YIntercept]
+//	UnfoldSettings[%Fit2LR]=LRFitUnfold2[%LoadingRate]
+//	UnfoldSettings[%Fit2YIntercept]=LRFitUnfold2[%YIntercept]
+//	// Set Refold Fit Settings
+//	RefoldSettings[%Fit1LR]=LRFitRefold1[%LoadingRate]
+//	RefoldSettings[%Fit1YIntercept]=LRFitRefold1[%YIntercept]
+//	RefoldSettings[%Fit2LR]=LRFitRefold2[%LoadingRate]
+//	RefoldSettings[%Fit2YIntercept]=LRFitRefold2[%YIntercept]
 
 End
 
@@ -1069,9 +1079,10 @@ Function LoadAllWavesForIndex(MasterIndex,[TargetDF])
 	LoadCorrectedFR(SelectedForce_Ret,SelectedSep_Ret,FRName)
 	
 	Duplicate/O$(TargetDF+"DefV"), $(TargetDF+"RorSForce")
-	Duplicate/O$(TargetDF+"ZSensor"),  $(TargetDF+"RorSSep")
+	Duplicate/O$(TargetDF+"ZSensor"),  $(TargetDF+"RorSSep"), $(TargetDF+"Extension")
 	Wave RorSForce=$(TargetDF+"RorSForce")
 	Wave RorSSep= $(TargetDF+"RorSSep")
+	Wave Extension=$(TargetDF+"Extension")
 	String DefVInfo=note(RorSForce)
 	Variable SpringConstant=str2num(StringByKey("K",DefVInfo,"=",";\r"))
 	Variable Invols=str2num(StringByKey("\rInvols",DefVInfo,"=",";\r"))
@@ -1094,7 +1105,9 @@ Function LoadAllWavesForIndex(MasterIndex,[TargetDF])
 	Variable InverseK=1/SpringConstant
 	Variable InverseKFO=InverseK*ForceOffset-SepOffset
 	FastOp RorSSep=(InverseKFO)+(ZSens)*RorSSep-(InverseK)*RorSForce//+(SepOffset)
-
+	FastOp Extension=(ZSens)*Extension//+(SepOffset)
+	Variable ExtensionOffset=Wavemin(Extension)
+	FastOp Extension=Extension-(ExtensionOffset)	
 	MakeSmoothedRorS(MasterIndex,TargetDF=TargetDF)	
 End
 
@@ -1250,6 +1263,7 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 					// Set up HMM application
 					ResetHMM()
 					Wave/T HMMSettingsStr=root:HMM:HMMSettingsStr
+
 					StrSwitch(SettingsStr[%CurrentMode])
 						case "LocalRamp":
 							HMMSettingsStr[%TargetDataFolder]="root:HMM:RNAPulling"+num2str(dval)
@@ -1277,11 +1291,10 @@ Function RNAAnalysisSetVarProc(sva) : SetVariableControl
 						case "LocalRamp":
 						break
 						case "Steps":
-							ResetHMM()
-							Wave/T HMMSettingsStr=root:HMM:HMMSettingsStr	
-							HMMSettingsStr[%TargetDataFolder]="root:HMM:RNAPulling"+num2str(AnalysisSettings[%MasterIndex])+"_"+num2str(AnalysisSettings[%SubIndex])
-							LoadSavedWaves(HMMSettingsStr[%TargetDataFolder],LoadToDF="root:HMM:")
-							HMMSettingsStr[%Target]="root:RNAPulling:Analysis:ForceRorS_smth"
+//							ResetHMM()
+//							HMMSettingsStr[%TargetDataFolder]="root:HMM:RNAPulling"+num2str(AnalysisSettings[%MasterIndex])+"_"+num2str(AnalysisSettings[%SubIndex])
+//							LoadSavedWaves(HMMSettingsStr[%TargetDataFolder],LoadToDF="root:HMM:")
+//							HMMSettingsStr[%Target]="root:RNAPulling:Analysis:ForceRorS_smth"
 						break
 					EndSwitch
 					
