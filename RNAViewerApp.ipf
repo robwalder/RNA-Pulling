@@ -3,6 +3,7 @@
 #include ":ChopRNAPulls"
 #include "::Force-Ramp-Utilities:BoxCarAveraging"
 #include ":RNAViewer"
+
 #pragma ModuleName = RNAViewerApp
 
 
@@ -102,28 +103,7 @@ Static Function UpdateRNAPullingOffsets(MasterIndex,NewForceOffset,NewSepOffset,
 	
 	If(!(NewForceOffset==RSForceOffset[MasterIndex]))
 		// Adjust Ramp fits and rupture forces if we have them.
-		If(RFAnalysisQ(MasterIndex))
-			Variable ForceDiff=+NewForceOffset-RSForceOffset[MasterIndex]
-			// First update y-intercept for fits
-			Wave UnfoldSettings=$RampDF+"UnfoldRFFitSettings_"+num2str(MasterIndex)
-			Wave RefoldSettings=$RampDF+"RefoldRFFitSettings_"+num2str(MasterIndex)
-			Variable NumRamps=DimSize(UnfoldSettings,1)
-			Variable RampCounter=0
-			For(RampCounter=0;RampCounter<NumRamps;RampCounter+=1)
-				UnfoldSettings[%Fit1YIntercept][RampCounter]+=ForceDiff
-				UnfoldSettings[%Fit2YIntercept][RampCounter]+=ForceDiff
-				RefoldSettings[%Fit1YIntercept][RampCounter]+=ForceDiff
-				RefoldSettings[%Fit2YIntercept][RampCounter]+=ForceDiff
-			EndFor
-			// Now update the rupture forces
-			Wave UnfoldRF=$RampDF+"UnfoldRF_"+num2str(MasterIndex)
-			Wave RefoldRF=$RampDF+"RefoldRF_"+num2str(MasterIndex)
-			UnfoldRF+=ForceDiff
-			RefoldRF+=ForceDiff
-
-		EndIf
 		RSForceOffset[MasterIndex]=NewForceOffset
-
 	EndIf
 	If(NewSepOffset!=RSSepOffset[MasterIndex])
 		RSSepOffset[MasterIndex]=NewSepOffset
@@ -348,6 +328,8 @@ Static Function ColorDisplaysByWave(ColorWave,[UpdateMain])
 	EndIf
 	
 	Wave ForceRorS_Smth=root:RNAViewer:ForceRorS_Smth
+	Wave RorSForce_Smth=root:RNAViewer:RorSForce_Smth
+	Wave Sep=root:RNAViewer:RorSSep_Smth
 	Wave SmoothAll=root:RNAViewer:RorSForce_Smth
 	WaveStats/Q ForceRorS_Smth
 	Variable StartTime=pnt2x(ForceRorS_Smth,V_startRow)
@@ -357,8 +339,11 @@ Static Function ColorDisplaysByWave(ColorWave,[UpdateMain])
 	
 	DoWindow/F RNAAnalysis_RorS_FvsS
 	ModifyGraph zColor(ForceRorS_Smth)={ColorWave[StartTargetP,EndTargetP],*,*,Rainbow16,0}
+	SetWindow RNAAnalysis_RorS_FvsS hook(ChangeStateHook)=RNAViewerApp#StateEditHookFunction
+
 	DoWindow/F RNAAnalysis_RorS_F
 	ModifyGraph zColor(ForceRorS_Smth)={ColorWave[StartTargetP,EndTargetP],*,*,Rainbow16,0}
+	SetWindow RNAAnalysis_RorS_F hook(ChangeStateHook)=RNAViewerApp#StateEditHookFunction
 	
 	If(UpdateMain)
 		Wave RorSForce_Smth=root:RNAViewer:RorSForce_Smth
@@ -366,6 +351,102 @@ Static Function ColorDisplaysByWave(ColorWave,[UpdateMain])
 		ModifyGraph zColor(RorSForce_Smth)={ColorWave,*,*,Rainbow16,0}
 	EndIf
 	Return 1
+End
+
+Static Function SetStateByXFRange(StateWave,NewState,StartX,EndX,StartF,EndF)
+	Wave StateWave
+	Variable NewState,StartX,EndX,StartF,EndF
+	
+	Wave ForceRorS_Smth=root:RNAViewer:ForceRorS_Smth
+	Wave SepRorS_Smth=root:RNAViewer:SepRorS_Smth
+	
+	Wave RorSForce_Smth=root:RNAViewer:RorSForce_Smth
+	Wave Sep=root:RNAViewer:RorSSep_Smth
+	Wave SmoothAll=root:RNAViewer:RorSForce_Smth
+	WaveStats/Q ForceRorS_Smth
+	Variable StartTime=pnt2x(ForceRorS_Smth,V_startRow)
+	Variable EndTime=pnt2x(ForceRorS_Smth,V_endRow)
+	Variable StartTargetP=x2pnt(SmoothAll,StartTime)
+	Variable EndTargetP=x2pnt(SmoothAll,EndTime)
+	
+	Duplicate/O RorSForce_Smth, ForceInRange,SepInRange,PinRange,InRangeForThisRorS
+	ForceInRange=(RorSForce_Smth>=StartF)&&(RorSForce_Smth<=EndF)
+	SepInRange=(Sep>=StartX)&&(Sep<=EndX)
+	PinRange=(p>=StartTargetP)&&(p<=EndTargetP)
+	InRangeForThisRorS=ForceInRange&&SepInRange&&PinRange
+	
+	StateWave=InRangeForThisRorS[p]==1 ? NewState : StateWave[p]
+End
+
+Static Function SetStateBytFRange(StateWave,NewState,StartX,EndX,StartF,EndF)
+	Wave StateWave
+	Variable NewState,StartX,EndX,StartF,EndF
+	
+	Wave ForceRorS_Smth=root:RNAViewer:ForceRorS_Smth
+	
+	Wave RorSForce_Smth=root:RNAViewer:RorSForce_Smth
+	Wave SmoothAll=root:RNAViewer:RorSForce_Smth
+	WaveStats/Q ForceRorS_Smth
+	Variable StartTime=pnt2x(ForceRorS_Smth,V_startRow)
+	Variable EndTime=pnt2x(ForceRorS_Smth,V_endRow)
+	Variable StartTargetP=x2pnt(SmoothAll,StartTime)
+	Variable EndTargetP=x2pnt(SmoothAll,EndTime)
+	
+	Duplicate/O RorSForce_Smth, ForceInRange,TimeInRange,PinRange,InRangeForThisRorS
+	ForceInRange=(RorSForce_Smth>=StartF)&&(RorSForce_Smth<=EndF)
+	TimeInRange=(pnt2x(RorSForce_Smth,p)>=StartX)&&(pnt2x(RorSForce_Smth,p)<=EndX)
+	PinRange=(p>=StartTargetP)&&(p<=EndTargetP)
+	InRangeForThisRorS=ForceInRange&&TimeInRange&&PinRange
+	
+	StateWave=InRangeForThisRorS[p]==1 ? NewState : StateWave[p]
+End
+
+Static Function StateEditHookFunction(s)
+	STRUCT WMWinHookStruct &s
+	Variable hookResult = 0	// 0 if we do not handle event, 1 if we handle it.
+	
+	// handle event
+	switch(s.eventCode)
+		case 11: // Keyboard event
+		//If(ControlButton)
+		//print "control"
+			switch (s.keycode)
+				case 48: // 0
+				case 49: // 1
+				case 50: // 2
+				case 51: // 3
+				case 52: // 4
+				case 53: // 5
+				case 54: // 6
+				case 55: // 7
+					GetMarquee left, bottom
+					print "yes"
+					If(V_flag)
+						Variable NewState=s.keycode-48
+						Variable StartX=V_left
+						Variable EndX=V_right
+						Variable StartF=V_bottom
+						Variable EndF=V_top
+						Wave/T RNAViewer_SettingsStr=root:RNAViewer:Settings:RNAViewer_SettingsStr
+						Wave StateWave=$RNAViewer_SettingsStr[%ColorWave]
+						StrSwitch(S_marqueeWin)
+							case "RNAAnalysis_RorS_FvsS": 
+								SetStateByXFRange(StateWave,NewState,StartX,EndX,StartF,EndF)
+							break
+							case "RNAAnalysis_RorS_F":
+								SetStateBytFRange(StateWave,NewState,StartX,EndX,StartF,EndF)
+							break
+						EndSwitch
+							
+					EndIf
+					hookResult=1
+				break // number codes
+			endswitch // s.keycode
+		//EndIf // controlbutton
+		break
+
+	EndSwitch
+	Return hookResult
 End
 
 Static Function SplitRamp()
@@ -580,7 +661,6 @@ Function DoAction(Action)
 	StrSwitch(Action)
 		case "MasterIndex":
 		RNAViewer_Settings[%ColorByWave]=0
-		NormalColorDisplays()
 
 		RNAViewer_Settings[%BoxCarAverage]=FilterSettings[RNAViewer_Settings[%MasterIndex]][0]
 		RNAViewer_Settings[%Decimation]=FilterSettings[RNAViewer_Settings[%MasterIndex]][1]
@@ -597,7 +677,9 @@ Function DoAction(Action)
 			break
 		EndSwitch
 
-		AllRNADisplays()				
+		AllRNADisplays()	
+		NormalColorDisplays()
+	
 		MakeStartEndIndexRorS(RNAViewer_Settings[%MasterIndex],ZSetPoint,Settings,SettingsStr)		
 		
 	break
@@ -626,6 +708,9 @@ Function DoAction(Action)
 	case "ApplyFilterButton":
 		MakeSmoothedRorS(RNAViewer_Settings[%MasterIndex])
 		LoadRorS(RNAViewer_Settings[%MasterIndex],RNAViewer_Settings[%SubIndex])
+	break
+	case "EditRorSStates":
+		
 	break
 
 EndSwitch
@@ -711,6 +796,9 @@ Static Function CheckProc(cba) : CheckBoxControl
 
 			Else
 				NormalColorDisplays()
+				SetWindow RNAAnalysis_RorS_FvsS hook(ChangeStateHook)=$""
+				SetWindow RNAAnalysis_RorS_F hook(ChangeStateHook)=$""
+
 			EndIf
 			break
 		case -1: // control being killed
