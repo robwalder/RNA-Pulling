@@ -404,6 +404,8 @@ End
 Static Function StateEditHookFunction(s)
 	STRUCT WMWinHookStruct &s
 	Variable hookResult = 0	// 0 if we do not handle event, 1 if we handle it.
+	Variable ControlButton=(s.eventmod & 2^3)!=0
+	Variable ShiftButton=(s.eventmod & 2^1)!=0
 	
 	// handle event
 	switch(s.eventCode)
@@ -440,12 +442,17 @@ Static Function StateEditHookFunction(s)
 							
 					EndIf
 					hookResult=1
-				break // number codes
 			endswitch // s.keycode
-		//EndIf // controlbutton
-		break
 
-	EndSwitch
+		break // number codes
+		case 22:					// Mouse Wheel
+				Wave RNAViewerSettings=root:RNAViewer:Settings:RNAViewer_Settings
+				RNAViewerSettings[%SubIndex]+=s.wheelDy
+				DoAction("SubIndex")
+				hookResult = 1
+		break // mouse wheel
+
+	EndSwitch // event codes
 	Return hookResult
 End
 
@@ -647,7 +654,7 @@ Static Function DisplayRNAPull(DisplayType,[TargetDF])
 End
 
 
-Function DoAction(Action)
+Static Function DoAction(Action)
 	String Action
 	Wave RNAViewer_Settings=root:RNAViewer:Settings:RNAViewer_Settings
 	Wave/T RNAViewer_SettingsStr=root:RNAViewer:Settings:RNAViewer_SettingsStr
