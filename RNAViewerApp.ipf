@@ -653,6 +653,34 @@ Static Function DisplayRNAPull(DisplayType,[TargetDF])
 
 End
 
+Function ConcatenateAllSplitRamps()
+	SetDataFolder root:RNAViewer
+	Wave RNAViewer_Settings=root:RNAViewer:Settings:RNAViewer_Settings
+	Variable Counter=0
+	Variable NumRamps=RNAViewer_Settings[%NumSteps]
+	Make/O/N=0 Unfold_Force,Unfold_Sep,Refold_Force,Refold_Sep
+	Wave ForceRorS_smth_Ext
+	Wave ForceRorS_smth_Ret
+	Wave SepRorS_smth_Ext
+	Wave SepRorS_smth_Ret
+	For(Counter=0;Counter<NumRamps;Counter+=1)
+		RNAViewer_Settings[%SubIndex]=Counter
+		DoAction("SubIndex")
+		Duplicate/O Unfold_Force, Unfold_F_Temp
+		Duplicate/O Unfold_Sep, Unfold_S_Temp
+		Duplicate/O Refold_Force, Refold_F_Temp
+		Duplicate/O Refold_Sep, Refold_s_Temp
+		Concatenate/O/NP {Unfold_F_Temp,ForceRorS_smth_Ext}, Unfold_Force
+		Concatenate/O/NP {Unfold_S_Temp,SepRorS_smth_Ext}, Unfold_Sep
+		Concatenate/O/NP {Refold_F_Temp,ForceRorS_smth_Ret}, Refold_Force
+		Concatenate/O/NP {Refold_s_Temp,SepRorS_smth_Ret}, Refold_Sep
+	EndFor
+	String ExperimentSettingsNote=Note(ForceRorS_smth_Ext)
+	Note Unfold_Force, ExperimentSettingsNote
+	Note Unfold_Sep, ExperimentSettingsNote
+	Note Refold_Force, ExperimentSettingsNote
+	Note Refold_Sep, ExperimentSettingsNote
+End
 
 Static Function DoAction(Action)
 	String Action
@@ -728,12 +756,13 @@ End
 
 Window RNAViewerPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(1487,111,1710,364) as "Local Ramp and Step Viewer"
+	NewPanel /W=(1636,68,1840,382) as "Local Ramp and Step Viewer"
 	SetDrawLayer UserBack
 	DrawLine 4,151,190,151
 	DrawLine 4,45,190,45
 	DrawText 4,64,"Pull Info"
 	DrawText 4,169,"Filtering"
+	DrawLine 5,256,191,256
 	SetVariable MasterIndex,pos={4,2},size={131,16},proc=RNAViewerApp#SetVarProc,title="Master Index"
 	SetVariable MasterIndex,limits={0,inf,1},value= root:RNAViewer:Settings:RNAViewer_Settings[%MasterIndex]
 	SetVariable SubIndex,pos={4,21},size={131,16},proc=RNAViewerApp#SetVarProc,title="Ramp/Step Index"
@@ -753,6 +782,10 @@ Window RNAViewerPanel() : Panel
 	SetVariable PullingVelocitySV,pos={4,130},size={149,16},proc=RNAViewerApp#SetVarProc,title="Pulling Velocity"
 	SetVariable PullingVelocitySV,format="%.2W1Pm/s"
 	SetVariable PullingVelocitySV,limits={-inf,inf,0},value= root:RNAViewer:Settings[%RetractVelocity],noedit= 1
+	CheckBox ColorbyWave,pos={8,265},size={95,14},proc=RNAViewerApp#CheckProc,title="Color By Wave?"
+	CheckBox ColorbyWave,value= 0
+	SetVariable ColorWave,pos={10,291},size={160,16},title="Color Wave"
+	SetVariable ColorWave,value= root:RNAViewer:Settings:RNAViewer_SettingsStr[%ColorWave]
 EndMacro
 
 
