@@ -87,7 +87,13 @@ Function DoRNAPull(OperationMode,RNAPullingSettings,RNAPullingStrSettings)
 	Duplicate/O ZSensorSetPoint, root:RNAPulling:ZSensorSetPointTemp
 	Wave ZSensorSetPointTemp=root:RNAPulling:ZSensorSetPointTemp
 	Variable StartPosition=CurrentPosition-RNAPullingSettings[%StartZOffset]*ZLVDTSens
-	FastOp ZSensorSetPoint=(ZLVDTSens)*ZSensorSetPointTemp+(StartPosition)
+	If(RNAPullingSettings[%ReverseDirection])
+		// Reverse sign on sensitivity to reverse the direction of the steps or ramps.
+		Variable NegSens=-1*ZLVDTSens
+		FastOp ZSensorSetPoint=(NegSens)*ZSensorSetPointTemp+(StartPosition)
+	Else
+		FastOp ZSensorSetPoint=(ZLVDTSens)*ZSensorSetPointTemp+(StartPosition)
+	EndIf
 	Wave Deflection=$DeflectionWaveName
 	Wave ZSensor=$ZSensorWaveName
 	DoClosedLoopZMotion(ZSensorSetPoint,Deflection,ZSensor,DecimationFactor=DecimationFactor,Callback=Callback)
@@ -402,7 +408,7 @@ End
 
 Window RNAPullingPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(550,463,942,830) as "RNA Pulling"
+	NewPanel /W=(1988,75,2380,442) as "RNA Pulling"
 	SetDrawLayer UserBack
 	DrawLine 10,200,382,200
 	DrawLine 170,8,170,199
@@ -457,17 +463,19 @@ Window RNAPullingPanel() : Panel
 	Button ResetTOSCounterButton,pos={178,238},size={100,23},proc=RNAPullingButtonProc,title="Reset TOS Counter"
 	Button ResetTOSCounterButton,fColor=(61440,61440,61440)
 	CheckBox TOSAfterRampStep,pos={178,269},size={127,14},proc=RNAPullingCheckProc,title="TOS after Ramp/Steps"
-	CheckBox TOSAfterRampStep,value= 0
+	CheckBox TOSAfterRampStep,value= 1
 	Button GoToStartPosition,pos={7,287},size={145,24},proc=RNAPullingButtonProc,title="Go To Start Position"
 	Button GoToStartPosition,fColor=(61440,61440,61440)
 	CheckBox ReturnToStartPosition,pos={180,293},size={176,14},proc=RNAPullingCheckProc,title="Return to Start Position after TOS"
-	CheckBox ReturnToStartPosition,value= 0
+	CheckBox ReturnToStartPosition,value= 1
 	Button SR1K,pos={175,172},size={53,22},proc=RNAPullingButtonProc,title="1 KHz"
 	Button SR1K,fColor=(61440,61440,61440)
 	Button SR50K,pos={232,172},size={53,22},proc=RNAPullingButtonProc,title="50 KHz"
 	Button SR50K,fColor=(61440,61440,61440)
 	Button RNAReadFastCapture,pos={5,320},size={145,24},proc=RNAPullingButtonProc,title="Read Fast Capture"
 	Button RNAReadFastCapture,fColor=(61440,61440,61440)
+	CheckBox ReverseDirection,pos={180,315},size={161,14},proc=RNAPullingCheckProc,title="Reverse Ramp/Step Direction"
+	CheckBox ReverseDirection,value= 0
 EndMacro
 
 Function/S LastForceRamp()
