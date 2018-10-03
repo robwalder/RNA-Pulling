@@ -375,12 +375,12 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 						Duplicate/O/R=(RNAWLCFitSettings[%StartFitX],RNAWLCFitSettings[%EndFitX]) RNAExtension, RNAExtensionSegment
 						Duplicate/O/R=(RNAWLCFitSettings[%StartFitX],RNAWLCFitSettings[%EndFitX]) RNAForce, RNAForceSegment
 
-						WLCFit(RNAForceSegment,RNAExtensionSegment,"WLC",CLGuess=RNAWLCFitSettings[%LcGuess_RNA],PLGuess=RNAWLCFitSettings[%LpGuess_RNA],StretchModulus=RNAWLCFitSettings[%KMod_RNA],Offset=RNAWLCFitSettings[%OffsetGuess_RNA],HoldPL=RNAWLCFitSettings[%HoldLp_RNA],HoldCL=RNAWLCFitSettings[%HoldLc_RNA],HoldStretchModulus=RNAWLCFitSettings[%HoldKmod_RNA],HoldOffset=RNAWLCFitSettings[%HoldOffset_RNA])
+						RNAConstruct_WLCFit(RNAForceSegment,RNAExtensionSegment,"WLC",CLGuess=RNAWLCFitSettings[%LcGuess_RNA],PLGuess=RNAWLCFitSettings[%LpGuess_RNA],StretchModulus=RNAWLCFitSettings[%KMod_RNA],Offset=RNAWLCFitSettings[%OffsetGuess_RNA],HoldPL=RNAWLCFitSettings[%HoldLp_RNA],HoldCL=RNAWLCFitSettings[%HoldLc_RNA],HoldStretchModulus=RNAWLCFitSettings[%HoldKmod_RNA],HoldOffset=RNAWLCFitSettings[%HoldOffset_RNA],HandlePl=DNAHandleFitSettings[%Lp_DNA],HandleCl=DNAHandleFitSettings[%Lc_DNA],HandleStretchModulus=DNAHandleFitSettings[%Kmod_DNA],HandleOffset=DNAHandleFitSettings[%Offset_DNA])
 						Wave WLC_Coeff
 						RNAWLCFitSettings[%Lc_RNA]=WLC_Coeff[1]
 						RNAWLCFitSettings[%Lp_RNA]=WLC_Coeff[0]
 						
-						WLCGuide("WLC",RNAWLCFitSettings[%Lc_RNA],RNAWLCFitSettings[%Lp_RNA],ForceWaveName="RNAForceGuide",SepWaveName="RNASepGuide",Offset=RNAWLCFitSettings[%Offset_RNA],StretchModulus=RNAWLCFitSettings[%Kmod_RNA],MaxForce=30e-12)
+						//WLCGuide("WLC",RNAWLCFitSettings[%Lc_RNA],RNAWLCFitSettings[%Lp_RNA],ForceWaveName="RNAForceGuide",SepWaveName="RNASepGuide",Offset=RNAWLCFitSettings[%Offset_RNA],StretchModulus=RNAWLCFitSettings[%Kmod_RNA],MaxForce=30e-12)
 						
 					break
 					case "DoRNACL":
@@ -480,6 +480,67 @@ Function RNAWLCAnalysisButtonProc(ba) : ButtonControl
 	endswitch
 
 	return 0
+End
+
+Function RNAConstruct_WLC(PCAndModulus,Force):FitFunc
+	Wave PCAndModulus
+	Variable Force
+	
+	Return PCAndModulus[1]*(1-0.5*(1.3806488e-23*298/Force/PCAndModulus[0])^0.5+Force/PCAndModulus[2])-2*PCandModulus[3]+ PCAndModulus[5]*(1-0.5*(1.3806488e-23*298/Force/PCAndModulus[4])^0.5+Force/PCAndModulus[6])
+
+End
+
+Function RNAConstruct_WLCFit(Force,Sep,Model,[CLGuess,PLGuess,StretchModulus,Offset,HoldPL,HoldCL,HoldStretchModulus,HoldOffset,HandlePL,HandleCL,HandleStretchModulus,HandleOffset])
+	Wave Force,Sep
+	String Model
+	Variable CLGuess,PLGuess,StretchModulus,Offset,HoldPL,HoldCL,HoldStretchModulus,HoldOffset,HandlePL,HandleCL,HandleStretchModulus,HandleOffset
+	
+	Duplicate/O Force, WLC_Fit
+	
+	If(ParamIsDefault(CLGuess))
+		CLGuess=350e-9
+	EndIf
+	If(ParamIsDefault(PLGuess))
+		PLGuess=50e-9
+	EndIf
+	If(ParamIsDefault(StretchModulus))
+		StretchModulus=0
+	EndIf
+	If(ParamIsDefault(Offset))
+		Offset=0
+	EndIf
+	If(ParamIsDefault(HoldPL))
+		HoldPL=0
+	EndIf
+	If(ParamIsDefault(HoldCL))
+		HoldCL=0
+	EndIf
+	If(ParamIsDefault(HoldStretchModulus))
+		HoldStretchModulus=1
+	EndIf
+	If(ParamIsDefault(HoldOffset))
+		HoldOffset=1
+	EndIf
+
+	String HoldCode="0000"+num2str(HoldPL)+num2str(HoldCL)+num2str(HoldStretchModulus)+num2str(HoldOffset)
+	
+	If(StretchModulus==0)
+		StretchModulus=1050e-12
+	EndIf
+	Make/D/O/N=4 WLC_Coeff
+	WLC_Coeff[0]=HandlePL
+	WLC_Coeff[1]=HandleCL
+	WLC_Coeff[2]=HandleStretchModulus
+	WLC_Coeff[3]=HandleOffset
+	WLC_Coeff[4]=PLGuess
+	WLC_Coeff[5]=CLGuess
+	WLC_Coeff[6]=StretchModulus
+	WLC_Coeff[7]=Offset
+	FuncFit/Q/N/NTHR=0/W=2/H=HoldCode ExtensibleWLCHighForce kwCWave=WLC_Coeff Sep /X=Force /D=WLC_Fit
+	
+	Duplicate/O Force,ForceFit
+	Duplicate/O WLC_Fit, SepFit
+	
 End
 
 Function RNAWLCAnalysisCheckProc(cba) : CheckBoxControl

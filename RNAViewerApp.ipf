@@ -682,6 +682,25 @@ Function ConcatenateAllSplitRamps()
 	Note Refold_Sep, ExperimentSettingsNote
 End
 
+Static Function UpdateNFPFromTimeline()
+	 InitRNAPullingOffsets()
+	 Wave RSForceOffset=root:RNAViewer:Settings:ForceOffset
+	Wave RSSepOffset=root:RNAViewer:Settings:SepOffset	
+		
+	Variable NumRS=DimSize(RSForceOffset,0)
+	Variable RSCounter=0
+	
+	For(RSCounter=0;RSCounter<NumRS;RSCounter+=1)
+		String Name="RNAPulling"+num2str(RSCounter)
+		String NFP=NearestARForceRamp(Name)
+		Wave/T SettingsStr=$"root:RNAPulling:SavedData:SettingsStr"+num2str(RSCounter)
+		SettingsStr[%NearestForcePull]=NFP
+		Wave FRUOffsets=root:FRU:preprocessing:Offsets
+		UpdateRNAPullingOffsets(RSCounter,FRUOffsets[%$NFP][%Offset_Force],FRUOffsets[%$NFP][%Offset_Sep])
+	EndFor
+
+End
+
 Static Function DoAction(Action)
 	String Action
 	Wave RNAViewer_Settings=root:RNAViewer:Settings:RNAViewer_Settings
